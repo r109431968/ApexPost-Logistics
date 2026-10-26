@@ -36,23 +36,23 @@ middleware, the main design decisions, and the security and audit design.
 
 ```mermaid
 flowchart LR
-    Browser\\\\\\\[Browser / Partner system] --> Web
-    subgraph Web\\\\\\\[ApexPost.Web - MVC]
-        MW\\\\\\\[Middleware pipeline] --> Filters\\\\\\\[Action filters] --> Ctl\\\\\\\[Thin controllers] --> Views\\\\\\\[Razor views]
+    Browser\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[Browser / Partner system] --> Web
+    subgraph Web\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[ApexPost.Web - MVC]
+        MW\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[Middleware pipeline] --> Filters\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[Action filters] --> Ctl\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[Thin controllers] --> Views\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[Razor views]
     end
     Ctl --> App
-    subgraph App\\\\\\\[ApexPost.Application]
-        UC\\\\\\\[Use cases: checkout, reversal, reports, login, staff]
-        Ports\\\\\\\[Interfaces: IRepository, IAuditStore, IClock, ICourierTrackingService...]
+    subgraph App\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[ApexPost.Application]
+        UC\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[Use cases: checkout, reversal, reports, login, staff]
+        Ports\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[Interfaces: IRepository, IAuditStore, IClock, ICourierTrackingService...]
         UC --> Ports
     end
     UC --> Dom
-    subgraph Dom\\\\\\\[ApexPost.Domain]
-        Ent\\\\\\\[Entities, value objects, rules, events]
+    subgraph Dom\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[ApexPost.Domain]
+        Ent\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[Entities, value objects, rules, events]
     end
     Infra --> Ports
-    subgraph Infra\\\\\\\[ApexPost.Infrastructure]
-        Json\\\\\\\[JSON repositories] --- Audit\\\\\\\[Audit JSON Lines] --- Cache\\\\\\\[ValueTask cache] --- Courier\\\\\\\[Simulated courier]
+    subgraph Infra\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[ApexPost.Infrastructure]
+        Json\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[JSON repositories] --- Audit\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[Audit JSON Lines] --- Cache\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[ValueTask cache] --- Courier\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[Simulated courier]
     end
     Web -.composition root only.-> Infra
 ```
@@ -78,14 +78,14 @@ classDiagram
     class IdentityVerification { <<value object>> +DocumentType +MaskedNumber +Result }
     class Money { <<value object>> }
     class Weight { <<value object>> }
-    Branch "1" o-- "1..\\\\\\\*" Counter
-    CounterTransaction "1" \\\\\\\*-- "\\\\\\\*" ILineItem
+    Branch "1" o-- "1..\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*" Counter
+    CounterTransaction "1" \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*-- "\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*" ILineItem
     ILineItem <|.. RetailLineItem
     ILineItem <|.. ShippingLineItem
     ILineItem <|.. MoneyOrderLineItem
     CounterTransaction "1" o-- "0..1" IdentityVerification
-    Branch "1" -- "\\\\\\\*" StockItem
-    Product "1" -- "\\\\\\\*" StockItem
+    Branch "1" -- "\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*" StockItem
+    Product "1" -- "\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*" StockItem
 ```
 
 **Entities** (identity matters, they change over time): Branch, Counter, Staff, Product, StockItem, ShippingZone, CounterTransaction.
@@ -99,22 +99,22 @@ type is one new class (see ADR-2).
 
 ```mermaid
 flowchart TD
-    A\\\\\\\[1 CorrelationId] --> B\\\\\\\[2 RequestLogging + timing]
-    B --> C\\\\\\\[3 ExceptionHandling - Problem Details]
-    C --> D\\\\\\\[4 StatusCodePages - not for /integration]
-    D --> E\\\\\\\[5 SecurityHeaders]
-    E --> F\\\\\\\[6 HSTS - not Development]
-    F --> G\\\\\\\[7 HttpsRedirection]
-    G --> H\\\\\\\[8 MaintenanceMode - keeps /health]
-    H --> I\\\\\\\[9 StaticFiles]
-    I --> J\\\\\\\[10 Routing]
-    J --> K\\\\\\\[11 IpRestriction]
-    K --> L\\\\\\\[12 CORS]
-    L --> M\\\\\\\[13 ApiKey]
-    M --> N\\\\\\\[14 RateLimiter]
-    N --> O\\\\\\\[15 Authentication]
-    O --> P\\\\\\\[16 Authorization]
-    P --> Q\\\\\\\[Endpoint: /health or MVC controller]
+    A\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[1 CorrelationId] --> B\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[2 RequestLogging + timing]
+    B --> C\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[3 ExceptionHandling - Problem Details]
+    C --> D\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[4 StatusCodePages - not for /integration]
+    D --> E\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[5 SecurityHeaders]
+    E --> F\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[6 HSTS - not Development]
+    F --> G\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[7 HttpsRedirection]
+    G --> H\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[8 MaintenanceMode - keeps /health]
+    H --> I\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[9 StaticFiles]
+    I --> J\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[10 Routing]
+    J --> K\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[11 IpRestriction]
+    K --> L\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[12 CORS]
+    L --> M\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[13 ApiKey]
+    M --> N\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[14 RateLimiter]
+    N --> O\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[15 Authentication]
+    O --> P\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[16 Authorization]
+    P --> Q\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[Endpoint: /health or MVC controller]
 ```
 
 |#|Middleware|Why it sits here|
@@ -127,12 +127,12 @@ flowchart TD
 |6, 7|HSTS, HTTPS redirection|Before any real work; no point serving plain HTTP. HSTS is off in Development so localhost is not pinned to HTTPS.|
 |8|Maintenance mode|Cheap 503 before routing, auth and database-like work. `/health` is exempt so monitors still work.|
 |9|Static files|Short-circuits css and images before routing, auth and rate limits (they need none of them).|
-|10|Routing|Must come before everything that reads endpoint metadata (`\\\\\\\[IpRestricted]`, `\\\\\\\[RequireApiKey]`, CORS, rate limit attributes).|
+|10|Routing|Must come before everything that reads endpoint metadata (`\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[IpRestricted]`, `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[RequireApiKey]`, CORS, rate limit attributes).|
 |11|IP restriction|Cheapest check, and it should reject strangers before any key comparison.|
 |12|CORS|Before the API key check so a browser preflight (which cannot carry the key) is answered, not rejected.|
 |13|API key|Rejects unknown callers and records the partner name for the rate limiter.|
 |14|Rate limiter|After the API key so the limit is per partner; login is limited per client address. Before authentication so password guessing is throttled before any password is checked.|
-|15, 16|Authentication, authorization|After routing (policies come from endpoint metadata) and after the cheap checks. The fallback policy requires a signed-in user for every endpoint that does not say `\\\\\\\[AllowAnonymous]`.|
+|15, 16|Authentication, authorization|After routing (policies come from endpoint metadata) and after the cheap checks. The fallback policy requires a signed-in user for every endpoint that does not say `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[AllowAnonymous]`.|
 
 **Forwarded headers and proxies.** The IP allowlist reads `Connection.RemoteIpAddress`. Behind a reverse proxy that is
 the proxy's address, so either everyone is blocked or everyone is allowed. The fix is `UseForwardedHeaders` with
@@ -150,7 +150,7 @@ endpoint; CORS only stops other websites from using a visitor's browser to read 
 |Correlation ID, request timing, security headers, maintenance, HTTPS|Middleware|Apply to every request, including static files and non-MVC endpoints; need no MVC knowledge.|
 |Exception to Problem Details|Middleware|Must also catch errors thrown outside MVC (routing, other middleware).|
 |IP allowlist, API key, rate limiting, CORS, authentication|Middleware|Must reject before MVC runs; use endpoint metadata only.|
-|**Audit** (`AuditActionFilter`)|Action filter|Needs the controller and action, the `\\\\\\\[Audit]` marker, route values, the action result type and the time spent in the action; none of that exists in middleware. Runs only for MVC actions.|
+|**Audit** (`AuditActionFilter`)|Action filter|Needs the controller and action, the `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[Audit]` marker, route values, the action result type and the time spent in the action; none of that exists in middleware. Runs only for MVC actions.|
 |**Validation** (`ValidationFilter`)|Action filter|Needs `ModelState` and the action arguments; the answer depends on the action (redisplay a view, redirect with a message, or JSON).|
 |**Performance** (`PerformanceFilter`)|Action filter|Times only the action itself, not routing, static files or the view, and knows which action was slow.|
 |**Domain exceptions** (`DomainExceptionFilter`)|Exception filter|A broken business rule on a form should return the user to that page with a message (Post/Redirect/Get), which needs MVC results. Unknown exceptions are left for the middleware.|
@@ -165,6 +165,7 @@ rejected by validation, and timing includes validation.
 * \* \*\*Problem:\*\* I needed to add a web application, but the business rules should not end up inside controllers.
 * \* \*\*Decision:\*\* I kept Domain, Application and Infrastructure and added `ApexPost.Web`. Controllers only call interfaces.
 * \* \*\*Why:\*\* the rules stay in one place and are easy to unit test. When storage changes later, only the Infrastructure project changes.
+* \* \*\*Week 1 check:\*\* the Week 1 layered architecture survived the change to the ApexPost domain. I redesigned the basket (interface-based line items), added value objects, and added the Web layer.
 * \* \*\*Alternative:\*\* one MVC project with everything inside. It is quicker to start, but rules spread into controllers and are hard to test.
 
 ### 
@@ -240,7 +241,25 @@ rejected by validation, and timing includes validation.
 |`ValueTask` + cache|`ProductCatalog`, `ZoneCatalog`|a cache hit finishes synchronously and allocates no `Task`; the catalogue is read on almost every request.|
 |Timeout vs cancellation|`SimulatedCourierTrackingService`|our timeout becomes `ExternalServiceTimeoutException` (HTTP 504); a caller cancel is not reported as a failure (HTTP 499, no body); a courier failure is HTTP 502.|
 
-## 
+\*\*What I measured.\*\* I measured each of these in `ApexPost.UnitTests/Measurements/MeasurementTests.cs`. Storage reads are simulated as slow (50 ms each) so the effect is visible. Numbers vary a little on every run and machine; these are from my lab VM.
+
+
+
+| What | Measurement | Reading |
+
+|---|---|---|
+
+| Catalogue cache (`ValueTask`) | 1 load, 1000 hits. Cold lookup 56.43 ms, warm lookup 0.0003 ms | A hit finishes synchronously from memory, about 100,000 times faster than reading the table. The catalogue is read on almost every request, so this matters. |
+
+| `Task.WhenAll` | Three report queries one after another: 253 ms. Started together with `WhenAll`: 121 ms. `DashboardAsync`: 119 ms | The queries are independent, so the total is close to the slowest one instead of the sum. About 2 times faster. |
+
+| `SemaphoreSlim` (courier lookups) | 10 parallel lookups at 150 ms each: limit 1 took 1560 ms, limit 3 took 623 ms, limit 10 took 156 ms | The limit works as designed: with 3 slots the lookups run in about 4 waves. The courier is never hit by more than 3 calls at once, and it still finishes much faster than one at a time. |
+
+
+
+These are simulated delays, not production load. They show the shape of the effect, not exact production figures.
+
+
 
 ## 9\. C# 14 and advanced C# used
 
@@ -253,7 +272,7 @@ rejected by validation, and timing includes validation.
 |Generics with constraints|`IRepository<T,TId> where T : Entity<TId>`, `CachedCatalog`, `ISpecification<in T>`|one repository and one cache for every table.|
 |Delegates|tax rule `Func<ILineItem, Money>`; `PredicateSpecification<T>(Func<T,bool>)`|rules can change without touching the domain.|
 |Events|`CounterEvents` (TransactionCompleted, StockLow, MoneyOrderIssued, TransactionVoided) and `NotificationSubscriber`|observers add notifications without the checkout knowing about them.|
-|Custom attributes + reflection|`\\\\\\\[NotBlank]`, `\\\\\\\[TextLength]`, `\\\\\\\[PositiveNumber]`, `\\\\\\\[Pattern]` and `AttributeModelValidator`|declarative rules; reflection metadata cached per type in a `ConcurrentDictionary`.|
+|Custom attributes + reflection|`\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[NotBlank]`, `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[TextLength]`, `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[PositiveNumber]`, `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\[Pattern]` and `AttributeModelValidator`|declarative rules; reflection metadata cached per type in a `ConcurrentDictionary`.|
 |async/`Task.WhenAll`/`SemaphoreSlim`/`ValueTask`|section 8||
 
 ## 10\. Security and audit
