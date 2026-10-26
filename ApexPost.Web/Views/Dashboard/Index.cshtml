@@ -1,0 +1,67 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    var sales = Model.Dashboard.Sales;
+}
+<h1>@Model.BranchName <span class="muted">(@Model.Dashboard.BranchCode) &middot; @Fmt.Day(Model.Dashboard.Day)</span></h1>
+
+<div class="grid">
+    <section class="card stat"><h3>Transactions today</h3><p class="big">@sales.TransactionCount</p></section>
+    <section class="card stat"><h3>Retail (before tax)</h3><p class="big">@Fmt.Price(sales.RetailTotal)</p></section>
+    <section class="card stat"><h3>Services (before tax)</h3><p class="big">@Fmt.Price(sales.ServicesTotal)</p></section>
+    <section class="card stat"><h3>Total (before tax)</h3><p class="big">@Fmt.Price(sales.Total)</p></section>
+</div>
+
+<section class="card">
+    <h2>Low stock</h2>
+    @if (Model.Dashboard.LowStock.Count == 0)
+    {
+        <p class="muted">Nothing is running low.</p>
+    }
+    else
+    {
+        <table>
+            <thead><tr><th>SKU</th><th>Product</th><th class="num">In stock</th><th class="num">Threshold</th></tr></thead>
+            <tbody>
+            @foreach (var item in Model.Dashboard.LowStock)
+            {
+                <tr><td>@item.Sku</td><td>@item.ProductName</td><td class="num">@item.Quantity</td><td class="num">@item.Threshold</td></tr>
+            }
+            </tbody>
+        </table>
+    }
+</section>
+
+<section class="card">
+    <h2>Alerts</h2>
+    @if (Model.Dashboard.Alerts.Count == 0)
+    {
+        <p class="muted">No alerts.</p>
+    }
+    else
+    {
+        <ul>
+        @foreach (var alert in Model.Dashboard.Alerts)
+        {
+            <li><strong>@alert.Kind</strong>: @alert.Message</li>
+        }
+        </ul>
+    }
+</section>
+
+<section class="card">
+    <h2>Latest notifications</h2>
+    @if (Model.Notifications.Count == 0)
+    {
+        <p class="muted">No notifications yet.</p>
+    }
+    else
+    {
+        <ul>
+        @foreach (var note in Model.Notifications)
+        {
+            <li><strong>@note.Title</strong> &ndash; @note.Message <span class="muted">(@Fmt.When(note.At))</span></li>
+        }
+        </ul>
+    }
+</section>

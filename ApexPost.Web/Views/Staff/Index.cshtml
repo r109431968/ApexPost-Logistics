@@ -1,0 +1,29 @@
+@model StaffListViewModel
+@{
+    ViewData["Title"] = "Staff";
+}
+<h1>Staff</h1>
+<p><a class="button primary" asp-controller="Staff" asp-action="Create">Add staff member</a></p>
+<table>
+    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Home branch</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var member in Model.Staff)
+    {
+        <tr class="@(member.IsActive ? "" : "low")">
+            <td>@member.Name</td><td>@member.Email</td><td>@member.Role</td><td>@member.HomeBranch</td>
+            <td>@(member.IsActive ? "Active" : "Inactive")</td>
+            <td class="actions">
+                <a asp-controller="Staff" asp-action="Edit" asp-route-id="@member.Id">Edit</a>
+                @if (member.IsActive && member.Id != Model.CurrentStaffId)
+                {
+                    <form method="post" asp-controller="Staff" asp-action="Deactivate" asp-route-id="@member.Id" class="inline"><button type="submit" class="link">Deactivate</button></form>
+                }
+                else if (!member.IsActive)
+                {
+                    <form method="post" asp-controller="Staff" asp-action="Activate" asp-route-id="@member.Id" class="inline"><button type="submit" class="link">Activate</button></form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

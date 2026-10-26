@@ -1,0 +1,18 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+<section class="card narrow">
+    <h1>Sign in</h1>
+    <form method="post" asp-controller="Account" asp-action="Login">
+        <input type="hidden" asp-for="ReturnUrl" />
+        <div asp-validation-summary="All" class="flash bad"></div>
+        <label>Email
+            <input asp-for="Email" type="email" autocomplete="username" autofocus />
+        </label>
+        <label>Password
+            <input asp-for="Password" type="password" autocomplete="current-password" />
+        </label>
+        <button type="submit" class="primary">Sign in</button>
+    </form>
+</section>

@@ -1,0 +1,5 @@
+@model ReportFilterViewModel
+@if (Model.CanChooseBranch)
+{
+    <label>Branch <input name="branch" value="@Model.BranchCode" placeholder="BR001" pattern="[Bb][Rr][0-9]{3}" /></label>
+}

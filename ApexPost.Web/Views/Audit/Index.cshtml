@@ -1,0 +1,20 @@
+@model IReadOnlyList<AuditEntry>
+@{
+    ViewData["Title"] = "Audit log";
+}
+<h1>Audit log <span class="muted">(newest first)</span></h1>
+<p><a asp-controller="Audit" asp-action="Export">Download as JSON</a></p>
+<table>
+    <thead><tr><th>When</th><th>Staff</th><th>Role</th><th>Branch</th><th>Operation</th><th>Status</th><th class="num">ms</th><th>Correlation ID</th></tr></thead>
+    <tbody>
+    @foreach (var entry in Model)
+    {
+        <tr>
+            <td>@Fmt.When(entry.Timestamp)</td>
+            <td>@entry.StaffId</td><td>@entry.Role</td><td>@entry.BranchCode</td>
+            <td>@(entry.Operation ?? entry.Action)</td>
+            <td>@entry.StatusCode</td><td class="num">@entry.DurationMs</td><td>@entry.CorrelationId</td>
+        </tr>
+    }
+    </tbody>
+</table>

@@ -1,0 +1,29 @@
+@model IReadOnlyList<Branch>
+@{
+    ViewData["Title"] = "Branches";
+}
+<h1>Branches</h1>
+<table>
+    <thead><tr><th>Code</th><th>Name</th><th>Region</th><th>Hours</th><th class="num">Counters</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var branch in Model)
+    {
+        <tr class="@(branch.IsActive ? "" : "low")">
+            <td>@branch.Code</td><td>@branch.Name</td><td>@branch.Region</td>
+            <td>@branch.OpensAt.ToString("HH:mm") &ndash; @branch.ClosesAt.ToString("HH:mm")</td>
+            <td class="num">@branch.Counters.Count</td>
+            <td>@(branch.IsActive ? "Open" : "Closed")</td>
+            <td>
+                @if (branch.IsActive)
+                {
+                    <form method="post" asp-controller="Branches" asp-action="Close" asp-route-code="@branch.Code" class="inline"><button type="submit" class="link">Close</button></form>
+                }
+                else
+                {
+                    <form method="post" asp-controller="Branches" asp-action="Open" asp-route-code="@branch.Code" class="inline"><button type="submit" class="link">Reopen</button></form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

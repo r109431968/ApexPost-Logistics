@@ -1,0 +1,10 @@
+@model StaffFormViewModel
+@{
+    ViewData["Title"] = "Add staff";
+}
+<section class="card narrow">
+    <h1>Add staff member</h1>
+    <form method="post" asp-controller="Staff" asp-action="Create">
+        <partial name="_StaffForm" model="Model" />
+    </form>
+</section>

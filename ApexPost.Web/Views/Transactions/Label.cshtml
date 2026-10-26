@@ -1,0 +1,19 @@
+@model LabelViewModel
+@{
+    ViewData["Title"] = "Shipping label";
+}
+<section class="label">
+    <header><strong>ApexPost</strong> <span>@Model.Line.ServiceLevel</span></header>
+    <p class="muted">From</p>
+    <p>@Model.FromBranch</p>
+    <p class="muted">To</p>
+    <p class="big">Zone @Model.Line.DestinationZone</p>
+    <table>
+        <tr><th>Type</th><td>@Model.Line.ShipmentType</td></tr>
+        <tr><th>Weight</th><td>@Model.Line.Weight</td></tr>
+        <tr><th>Postage</th><td>@Fmt.Price(Model.Line.LineTotal)</td></tr>
+        <tr><th>Reference</th><td>@Model.Reference</td></tr>
+    </table>
+    <p class="code">@Model.Reference</p>
+</section>
+<p><a asp-controller="Transactions" asp-action="Details" asp-route-id="@Model.Transaction.Id">Back to the transaction</a></p>

@@ -1,0 +1,10 @@
+@{
+    ViewData["Title"] = "Reports";
+}
+<h1>Reports</h1>
+<div class="grid two">
+    <a class="card linkcard" asp-controller="Reports" asp-action="DailySales"><h2>Daily branch sales</h2><p>Retail and services, split.</p></a>
+    <a class="card linkcard" asp-controller="Reports" asp-action="LowStock"><h2>Low stock</h2><p>Products at or below the threshold.</p></a>
+    <a class="card linkcard" asp-controller="Reports" asp-action="ShippingVolume"><h2>Shipping volume</h2><p>By destination zone and service level.</p></a>
+    <a class="card linkcard" asp-controller="Reports" asp-action="MoneyOrders"><h2>Money orders and identity checks</h2><p>The auditor view. Document numbers are masked.</p></a>
+</div>

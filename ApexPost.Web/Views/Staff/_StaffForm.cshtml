@@ -1,0 +1,14 @@
+@model StaffFormViewModel
+<div asp-validation-summary="All" class="flash bad"></div>
+<label>Name <input asp-for="Name" maxlength="100" /></label>
+<label>Email <input asp-for="Email" type="email" maxlength="150" /></label>
+<label>Role
+    <select asp-for="Role" asp-items="Html.GetEnumSelectList<StaffRole>()"></select>
+</label>
+<label>Home branch <input asp-for="HomeBranch" placeholder="BR001" maxlength="5" /></label>
+@if (Model.Id is null)
+{
+    <label>Password (at least 12 characters) <input asp-for="Password" type="password" autocomplete="new-password" /></label>
+}
+<button type="submit" class="primary">Save</button>
+<a asp-controller="Staff" asp-action="Index">Cancel</a>

@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <UserSecretsId>apexpost-counter-platform-2026</UserSecretsId>
+    <!-- Razor can raise nullable warnings that are easy to miss. Remove this line once the build is clean
+         so the zero-warning rule is enforced for the web project too. -->
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ApexPost.Application\ApexPost.Application.csproj" />
+    <ProjectReference Include="..\ApexPost.Infrastructure\ApexPost.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

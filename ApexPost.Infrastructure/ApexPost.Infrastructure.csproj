@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\ApexPost.Application\ApexPost.Application.csproj" />
+  </ItemGroup>
+</Project>

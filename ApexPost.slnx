@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="ApexPost.Domain/ApexPost.Domain.csproj" />
+  <Project Path="ApexPost.Application/ApexPost.Application.csproj" />
+  <Project Path="ApexPost.Infrastructure/ApexPost.Infrastructure.csproj" />
+  <Project Path="ApexPost.Web/ApexPost.Web.csproj" />
+  <Project Path="ApexPost.UnitTests/ApexPost.UnitTests.csproj" />
+  <Project Path="ApexPost.IntegrationTests/ApexPost.IntegrationTests.csproj" />
+</Solution>
