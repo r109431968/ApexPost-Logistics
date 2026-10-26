@@ -1,0 +1,12 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+publish/
+TestResults/
+# Runtime data (seeded JSON, password hashes, audit log) is generated on first run.
+ApexPost.Web/data/
+secrets.json
+publish/
+*.zip
