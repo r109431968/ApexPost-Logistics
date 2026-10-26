@@ -1,0 +1,21 @@
+@model TransactionListViewModel
+@{
+    ViewData["Title"] = "Transactions";
+}
+<h1>Transactions <span class="muted">@Model.BranchCode</span></h1>
+<p><a class="button primary" asp-controller="Transactions" asp-action="New">New counter transaction</a></p>
+<table>
+    <thead><tr><th>Opened</th><th>Status</th><th class="num">Lines</th><th class="num">Total</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var transaction in Model.Transactions)
+    {
+        <tr>
+            <td>@Fmt.When(transaction.CreatedAt)</td>
+            <td><span class="badge @transaction.Status.ToString().ToLowerInvariant()">@transaction.Status</span></td>
+            <td class="num">@transaction.Lines.Count</td>
+            <td class="num">@Fmt.Price(transaction.Total)</td>
+            <td><a asp-controller="Transactions" asp-action="Details" asp-route-id="@transaction.Id">Open</a></td>
+        </tr>
+    }
+    </tbody>
+</table>

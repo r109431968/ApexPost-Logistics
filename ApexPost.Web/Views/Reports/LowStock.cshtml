@@ -1,0 +1,26 @@
+@model LowStockViewModel
+@{
+    ViewData["Title"] = "Low stock";
+}
+<h1>Low stock</h1>
+<form method="get" class="filters" asp-controller="Reports" asp-action="LowStock">
+    <partial name="_BranchFilter" model="Model.Filter" />
+    <label>Threshold <input name="threshold" type="number" min="0" value="@Model.Threshold" /></label>
+    <button type="submit">Show</button>
+</form>
+@if (Model.Items.Count == 0)
+{
+    <p class="muted">Nothing is at or below the threshold.</p>
+}
+else
+{
+    <table>
+        <thead><tr><th>Branch</th><th>SKU</th><th>Product</th><th class="num">In stock</th><th class="num">Threshold</th></tr></thead>
+        <tbody>
+        @foreach (var item in Model.Items)
+        {
+            <tr><td>@item.BranchCode</td><td>@item.Sku</td><td>@item.ProductName</td><td class="num">@item.Quantity</td><td class="num">@item.Threshold</td></tr>
+        }
+        </tbody>
+    </table>
+}

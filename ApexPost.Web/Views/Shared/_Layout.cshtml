@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(ViewData["Title"] ?? "ApexPost") - ApexPost Counter Platform</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+<header class="topbar">
+    <a class="brand" asp-controller="Home" asp-action="Index">ApexPost Counter</a>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        var role = User.ApexRole;
+        <nav class="nav">
+            <a asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+            <a asp-controller="Catalogue" asp-action="Index">Catalogue</a>
+            @if (role is StaffRole.CounterClerk or StaffRole.BranchManager)
+            {
+                <a asp-controller="Transactions" asp-action="Index">Transactions</a>
+            }
+            @if (role is StaffRole.BranchManager or StaffRole.Auditor or StaffRole.Administrator)
+            {
+                <a asp-controller="Reports" asp-action="Index">Reports</a>
+                <a asp-controller="Notifications" asp-action="Index">Notifications</a>
+            }
+            @if (role is StaffRole.Auditor or StaffRole.Administrator)
+            {
+                <a asp-controller="Audit" asp-action="Index">Audit log</a>
+            }
+            @if (role == StaffRole.Administrator)
+            {
+                <a asp-controller="Staff" asp-action="Index">Staff</a>
+                <a asp-controller="Branches" asp-action="Index">Branches</a>
+            }
+        </nav>
+        <form class="signout" method="post" asp-controller="Account" asp-action="Logout">
+            <span class="who">@User.Identity.Name &middot; @role &middot; @User.HomeBranchCode</span>
+            <button type="submit" class="link">Sign out</button>
+        </form>
+    }
+</header>
+<main class="page">
+    @if (TempData["Success"] is string success)
+    {
+        <div class="flash ok" role="status">@success</div>
+    }
+    @if (TempData["Error"] is string error)
+    {
+        <div class="flash bad" role="alert">@error</div>
+    }
+    @RenderBody()
+</main>
+<footer class="footer">ApexPost Counter Platform &middot; Week 2</footer>
+</body>
+</html>

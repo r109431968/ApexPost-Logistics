@@ -1,0 +1,47 @@
+@model CatalogueViewModel
+@{
+    ViewData["Title"] = "Catalogue";
+}
+<h1>Catalogue and stock <span class="muted">@Model.BranchCode</span></h1>
+
+<form method="get" class="filters" asp-controller="Catalogue" asp-action="Index">
+    <label>Search <input name="search" value="@Model.Search" /></label>
+    <label>Category
+        <select name="category">
+            <option value="">All</option>
+            @foreach (var value in Enum.GetValues<ProductCategory>())
+            {
+                <option value="@value" selected="@(Model.Category == value)">@value</option>
+            }
+        </select>
+    </label>
+    <input type="hidden" name="branch" value="@Model.BranchCode" />
+    <button type="submit">Filter</button>
+</form>
+
+<table>
+    <thead><tr><th>SKU</th><th>Name</th><th>Category</th><th class="num">Price</th><th>Tax</th><th class="num">In stock</th></tr></thead>
+    <tbody>
+    @foreach (var row in Model.Rows)
+    {
+        <tr class="@(row.IsLow ? "low" : "")">
+            <td>@row.Sku</td><td>@row.Name</td><td>@row.Category</td>
+            <td class="num">@Fmt.Price(row.UnitPrice)</td><td>@row.TaxCategory</td>
+            <td class="num">@row.Quantity @(row.IsLow ? "(low)" : "")</td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+@if (Model.CanAdjust)
+{
+    <section class="card">
+        <h2>Adjust stock</h2>
+        <form method="post" asp-controller="Catalogue" asp-action="Adjust" class="inline">
+            <label>SKU <input name="Sku" placeholder="PKG-0001" required pattern="[A-Za-z]{3}-[0-9]{4}" /></label>
+            <label>Change (+/-) <input name="Delta" type="number" value="0" required /></label>
+            <label>Reason <input name="Reason" required maxlength="200" /></label>
+            <button type="submit" class="primary">Save</button>
+        </form>
+    </section>
+}

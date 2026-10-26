@@ -1,0 +1,160 @@
+@model TransactionDetailsViewModel
+@{
+    var transaction = Model.Transaction;
+    var isOpen = transaction.Status == TransactionStatus.Open;
+    ViewData["Title"] = "Transaction";
+}
+<h1>Transaction <span class="badge @transaction.Status.ToString().ToLowerInvariant()">@transaction.Status</span></h1>
+<p class="muted">@transaction.Id &middot; opened @Fmt.When(transaction.CreatedAt)</p>
+
+<section class="card">
+    <h2>Basket</h2>
+    @if (transaction.Lines.Count == 0)
+    {
+        <p class="muted">The basket is empty.</p>
+    }
+    else
+    {
+        <table>
+            <thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Line total</th><th></th></tr></thead>
+            <tbody>
+            @{ var shippingIndex = 0; }
+            @foreach (var line in transaction.Lines)
+            {
+                <tr>
+                    <td>@line.Description</td>
+                    <td class="num">@line.Quantity</td>
+                    <td class="num">@Fmt.Price(line.UnitPrice)</td>
+                    <td class="num">@Fmt.Price(line.LineTotal)</td>
+                    <td>
+                        @if (line is ShippingLineItem)
+                        {
+                            <a asp-controller="Transactions" asp-action="Label" asp-route-id="@transaction.Id" asp-route-line="@shippingIndex">Label preview</a>
+                                shippingIndex++;
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+            <tfoot>
+                <tr><td colspan="3">Retail</td><td class="num">@Fmt.Price(transaction.RetailSubtotal)</td><td></td></tr>
+                <tr><td colspan="3">Services</td><td class="num">@Fmt.Price(transaction.ServicesSubtotal)</td><td></td></tr>
+                <tr><td colspan="3">Subtotal</td><td class="num">@Fmt.Price(transaction.Subtotal)</td><td></td></tr>
+                <tr><td colspan="3">Tax</td><td class="num">@Fmt.Price(transaction.TaxTotal)</td><td></td></tr>
+                <tr class="total"><td colspan="3">Total</td><td class="num">@Fmt.Price(transaction.Total)</td><td></td></tr>
+            </tfoot>
+        </table>
+    }
+    @if (transaction.Verification is { } verification)
+    {
+        <p>Identity: @verification.DocumentType @verification.MaskedNumber &ndash; <strong>@verification.Result</strong></p>
+    }
+    @if (transaction.ReversalReason is { } reason)
+    {
+        <p>Reason: @reason</p>
+    }
+</section>
+
+@if (isOpen)
+{
+    <div class="grid two">
+        <section class="card">
+            <h2>Add retail item</h2>
+            <form method="post" asp-controller="Transactions" asp-action="AddItem" asp-route-id="@transaction.Id">
+                <label>Product
+                    <select name="Sku" required>
+                        @foreach (var product in Model.Products)
+                        {
+                            <option value="@product.Sku">@product.Sku &ndash; @product.Name (@Fmt.Price(product.UnitPrice), stock @product.Quantity)</option>
+                        }
+                    </select>
+                </label>
+                <label>Quantity <input name="Quantity" type="number" min="1" max="500" value="1" required /></label>
+                <button type="submit" class="primary">Add item</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Add shipping</h2>
+            <form method="post" asp-controller="Transactions" asp-action="AddShipping" asp-route-id="@transaction.Id">
+                <label>Type
+                    <select name="ShipmentType">
+                        @foreach (var value in Enum.GetValues<ShipmentType>()) { <option value="@value">@value</option> }
+                    </select>
+                </label>
+                <label>Weight (kg) <input name="WeightKg" type="number" step="0.001" min="0.001" required /></label>
+                <label>Destination zone
+                    <select name="ZoneCode" required>
+                        @foreach (var zone in Model.Zones) { <option value="@zone.Code">@zone.Code &ndash; @zone.Name</option> }
+                    </select>
+                </label>
+                <label>Service level
+                    <select name="ServiceLevel">
+                        @foreach (var value in Enum.GetValues<ServiceLevel>()) { <option value="@value">@value</option> }
+                    </select>
+                </label>
+                <button type="submit" class="primary">Add shipping</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Add money order</h2>
+            <p class="muted">Amounts above @Model.VerificationThreshold.ToString("N2") need a passed identity verification.</p>
+            <form method="post" asp-controller="Transactions" asp-action="AddMoneyOrder" asp-route-id="@transaction.Id">
+                <label>Sender <input name="Sender" required maxlength="80" /></label>
+                <label>Recipient <input name="Recipient" required maxlength="80" /></label>
+                <label>Amount <input name="Amount" type="number" step="0.01" min="0.01" required /></label>
+                <button type="submit" class="primary">Add money order</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Identity verification</h2>
+            <p class="muted">Only the last four characters are kept.</p>
+            <form method="post" asp-controller="Transactions" asp-action="Verify" asp-route-id="@transaction.Id">
+                <label>Document type
+                    <select name="DocumentType">
+                        @foreach (var value in Enum.GetValues<DocumentType>()) { <option value="@value">@value</option> }
+                    </select>
+                </label>
+                <label>Document number <input name="DocumentNumber" required minlength="4" maxlength="40" autocomplete="off" /></label>
+                <label>Result
+                    <select name="Result">
+                        @foreach (var value in new[] { VerificationResult.Passed, VerificationResult.Failed, VerificationResult.Pending }) { <option value="@value">@value</option> }
+                    </select>
+                </label>
+                <button type="submit">Record verification</button>
+            </form>
+        </section>
+    </div>
+
+    <section class="card">
+        <h2>Take payment</h2>
+        <form method="post" asp-controller="Transactions" asp-action="Pay" asp-route-id="@transaction.Id" class="inline">
+            <label>Method
+                <select name="Method">
+                    @foreach (var value in Enum.GetValues<PaymentMethod>()) { <option value="@value">@value</option> }
+                </select>
+            </label>
+            <button type="submit" class="primary">Pay @Fmt.Price(transaction.Total) + tax</button>
+        </form>
+    </section>
+}
+
+@if (Model.CanReverse)
+{
+    <section class="card">
+        <h2>Void or refund (Branch Manager)</h2>
+        <form method="post" asp-controller="Transactions" asp-action="Void" asp-route-id="@transaction.Id" class="inline">
+            <label>Reason <input name="Reason" required maxlength="200" /></label>
+            <button type="submit">Void</button>
+        </form>
+        @if (transaction.Status == TransactionStatus.Paid)
+        {
+            <form method="post" asp-controller="Transactions" asp-action="Refund" asp-route-id="@transaction.Id" class="inline">
+                <label>Reason <input name="Reason" required maxlength="200" /></label>
+                <button type="submit">Refund</button>
+            </form>
+        }
+    </section>
+}

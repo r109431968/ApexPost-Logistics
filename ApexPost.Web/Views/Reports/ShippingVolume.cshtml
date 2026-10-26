@@ -1,0 +1,27 @@
+@model ShippingVolumeViewModel
+@{
+    ViewData["Title"] = "Shipping volume";
+}
+<h1>Shipping volume by zone and service level</h1>
+<form method="get" class="filters" asp-controller="Reports" asp-action="ShippingVolume">
+    <partial name="_BranchFilter" model="Model.Filter" />
+    <label>From <input name="from" type="date" value="@Fmt.Day(Model.From)" /></label>
+    <label>To <input name="to" type="date" value="@Fmt.Day(Model.To)" /></label>
+    <button type="submit">Show</button>
+</form>
+@if (Model.Rows.Count == 0)
+{
+    <p class="muted">No shipments in this period.</p>
+}
+else
+{
+    <table>
+        <thead><tr><th>Zone</th><th>Service level</th><th class="num">Shipments</th><th class="num">Weight (kg)</th><th class="num">Revenue</th></tr></thead>
+        <tbody>
+        @foreach (var row in Model.Rows)
+        {
+            <tr><td>@row.ZoneCode</td><td>@row.ServiceLevel</td><td class="num">@row.ShipmentCount</td><td class="num">@row.TotalWeightKg.ToString("0.###")</td><td class="num">@Fmt.Price(row.Revenue)</td></tr>
+        }
+        </tbody>
+    </table>
+}

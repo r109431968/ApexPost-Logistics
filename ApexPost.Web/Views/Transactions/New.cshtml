@@ -1,0 +1,23 @@
+@model NewTransactionViewModel
+@{
+    ViewData["Title"] = "New transaction";
+}
+<section class="card narrow">
+    <h1>New counter transaction</h1>
+    <p>@Model.Branch.Name (@Model.Branch.Code)</p>
+    @if (!Model.Branch.IsActive)
+    {
+        <div class="flash bad">This branch is closed and cannot accept transactions.</div>
+    }
+    <form method="post" asp-controller="Transactions" asp-action="Open">
+        <label>Counter
+            <select name="counterId" required>
+                @foreach (var counter in Model.Branch.Counters)
+                {
+                    <option value="@counter.Id">@counter.Label</option>
+                }
+            </select>
+        </label>
+        <button type="submit" class="primary">Open transaction</button>
+    </form>
+</section>

@@ -1,0 +1,22 @@
+@model DailySalesViewModel
+@{
+    ViewData["Title"] = "Daily sales";
+}
+<h1>Daily branch sales <span class="muted">@Model.Report.BranchCode</span></h1>
+<form method="get" class="filters" asp-controller="Reports" asp-action="DailySales">
+    <partial name="_BranchFilter" model="Model.Filter" />
+    <label>Day <input name="day" type="date" value="@Fmt.Day(Model.Report.Day)" /></label>
+    <button type="submit">Show</button>
+</form>
+<table>
+    <thead><tr><th>Day</th><th class="num">Transactions</th><th class="num">Retail</th><th class="num">Services</th><th class="num">Total</th></tr></thead>
+    <tbody>
+        <tr>
+            <td>@Fmt.Day(Model.Report.Day)</td>
+            <td class="num">@Model.Report.TransactionCount</td>
+            <td class="num">@Fmt.Price(Model.Report.RetailTotal)</td>
+            <td class="num">@Fmt.Price(Model.Report.ServicesTotal)</td>
+            <td class="num">@Fmt.Price(Model.Report.Total)</td>
+        </tr>
+    </tbody>
+</table>
