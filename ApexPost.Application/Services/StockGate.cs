@@ -1,10 +1,17 @@
+using System.Collections.Concurrent;
+using ApexPost.Domain.ValueObjects;
+
 namespace ApexPost.Application.Services;
 
 /// <summary>
-/// One process-wide gate so two requests cannot change stock at the same time.
+/// One lock per branch, so two requests cannot change the same branch's stock at the same time,
+/// while payments at different branches never wait for each other.
 /// A real database transaction replaces this next week.
 /// </summary>
 internal static class StockGate
 {
-    public static readonly SemaphoreSlim Gate = new(1, 1);
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> Gates = new(StringComparer.Ordinal);
+
+    public static SemaphoreSlim For(BranchCode branch) =>
+        Gates.GetOrAdd(branch.Value, _ => new SemaphoreSlim(1, 1));
 }

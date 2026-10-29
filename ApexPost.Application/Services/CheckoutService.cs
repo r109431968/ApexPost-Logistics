@@ -122,7 +122,12 @@ public sealed class CheckoutService(
     public async Task<CounterTransaction> PayAsync(
         Guid transactionId, PaymentMethod method, CancellationToken cancellationToken)
     {
-        await StockGate.Gate.WaitAsync(cancellationToken);
+        // The lock is per branch. The branch is read first, then the transaction is loaded again inside the
+        // lock, so the stock check always sees fresh data.
+        var branch = (await LoadAsync(transactionId, cancellationToken)).BranchCode;
+        var gate = StockGate.For(branch);
+
+        await gate.WaitAsync(cancellationToken);
         try
         {
             var transaction = await LoadAsync(transactionId, cancellationToken);
@@ -179,7 +184,7 @@ public sealed class CheckoutService(
         }
         finally
         {
-            StockGate.Gate.Release();
+            gate.Release();
         }
     }
 

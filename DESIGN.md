@@ -215,7 +215,7 @@ rejected by validation, and timing includes validation.
 ### ADR-8: Bounded concurrency and caching
 
 * **Decision:** `SemaphoreSlim` guards (a) every JSON file write, (b) stock changes across use cases (`StockGate`), and (c) courier lookups (`MaxConcurrentLookups`). Zones and products are read through a `ValueTask` cache with a time-to-live and hit/load counters. The courier timeout uses a linked `CancellationTokenSource`; caller cancellation and our own timeout are told apart.
-* **Consequences:** stock can never go negative even with two clerks paying at once. `StockGate` is one lock for the whole process: simple and correct for one server, replaced by a database transaction next week.
+* **Consequences:** stock can never go negative even with two clerks paying at once. `StockGate` keeps one lock per branch (keyed by branch code), so payments at different branches do not wait for each other while one branch's stock is still changed by one request at a time. It is correct for one server and is replaced by a database transaction next week.
 
 ### ADR-9: DI lifetimes
 

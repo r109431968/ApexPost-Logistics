@@ -24,7 +24,11 @@ public sealed class ReversalService(
     private async Task<CounterTransaction> ReverseAsync(
         Guid transactionId, Guid managerId, string reason, bool isRefund, CancellationToken cancellationToken)
     {
-        await StockGate.Gate.WaitAsync(cancellationToken);
+        var branch = (await transactions.GetByIdAsync(transactionId, cancellationToken)
+            ?? throw new NotFoundException(nameof(CounterTransaction), transactionId)).BranchCode;
+        var gate = StockGate.For(branch);
+
+        await gate.WaitAsync(cancellationToken);
         try
         {
             var transaction = await transactions.GetByIdAsync(transactionId, cancellationToken)
@@ -53,7 +57,7 @@ public sealed class ReversalService(
         }
         finally
         {
-            StockGate.Gate.Release();
+            gate.Release();
         }
     }
 

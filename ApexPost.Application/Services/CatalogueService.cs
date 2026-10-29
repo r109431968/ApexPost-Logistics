@@ -59,7 +59,8 @@ public sealed class CatalogueService(
         if (await products.GetAsync(sku, cancellationToken) is null)
             throw new NotFoundException(nameof(Product), sku);
 
-        await StockGate.Gate.WaitAsync(cancellationToken);
+        var gate = StockGate.For(actor.HomeBranch);
+        await gate.WaitAsync(cancellationToken);
         try
         {
             var item = await stock.GetByIdAsync(StockItem.KeyFor(actor.HomeBranch, sku), cancellationToken);
@@ -90,7 +91,7 @@ public sealed class CatalogueService(
         }
         finally
         {
-            StockGate.Gate.Release();
+            gate.Release();
         }
     }
 }
