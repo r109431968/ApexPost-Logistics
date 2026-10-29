@@ -60,6 +60,7 @@
     <div class="grid two">
         <section class="card">
             <h2>Add retail item</h2>
+            <p class="muted">Stock shown here is a guide. It is checked and taken only when you take payment, so another sale may use it first.</p>
             <form method="post" asp-controller="Transactions" asp-action="AddItem" asp-route-id="@transaction.Id">
                 <label>Product
                     <select name="Sku" required>

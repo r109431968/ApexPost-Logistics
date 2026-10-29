@@ -9,14 +9,14 @@ Design decisions, diagrams and ADRs are in [DESIGN.md](DESIGN.md). A sample of t
 
 ## Solution layout
 
-| Project | Purpose |
-|---|---|
-| `ApexPost.Domain` | Entities, value objects (Money, Weight, Address, BranchCode, Sku, IdentityVerification), enums, rules, events. No dependencies. |
-| `ApexPost.Application` | Use cases (checkout, reversal, reports, login, staff...), interfaces (ports), specifications, validation attributes, extension members. |
-| `ApexPost.Infrastructure` | JSON repositories, audit store, credential store, cache, simulated courier service, seed data. |
-| `ApexPost.Web` | MVC controllers and views, middleware, filters, composition root (`Program.cs`). |
-| `ApexPost.UnitTests` | xUnit tests for rules, pricing, tax, validation, persistence, cache, courier. |
-| `ApexPost.IntegrationTests` | `WebApplicationFactory` tests for the middleware pipeline, security and audit. |
+|Project|Purpose|
+|-|-|
+|`ApexPost.Domain`|Entities, value objects (Money, Weight, Address, BranchCode, Sku, IdentityVerification), enums, rules, events. No dependencies.|
+|`ApexPost.Application`|Use cases (checkout, reversal, reports, login, staff...), interfaces (ports), specifications, validation attributes, extension members.|
+|`ApexPost.Infrastructure`|JSON repositories, audit store, credential store, cache, simulated courier service, seed data.|
+|`ApexPost.Web`|MVC controllers and views, middleware, filters, composition root (`Program.cs`).|
+|`ApexPost.UnitTests`|xUnit tests for rules, pricing, tax, validation, persistence, cache, courier.|
+|`ApexPost.IntegrationTests`|`WebApplicationFactory` tests for the middleware pipeline, security and audit.|
 
 ## Run it
 
@@ -24,36 +24,35 @@ Needs the .NET 10 SDK and a trusted HTTPS development certificate (`dotnet dev-c
 
 1. **Set the secrets** (they are never stored in the repository). Run `setup-secrets.bat`, or by hand:
 
-   ```bat
+```bat
    dotnet user-secrets set "Seed:DemoPassword" "<a password with at least 12 characters>" --project ApexPost.Web
    dotnet user-secrets set "Integration:ApiKeys:CourierPartner" "<a long random key>" --project ApexPost.Web
    ```
 
 2. **Start the web app**:
 
-   ```bat
+```bat
    dotnet run --project ApexPost.Web --launch-profile https
    ```
 
-   Open https://localhost:7141. The first start creates `ApexPost.Web/data/*.json` (6 branches, 26 staff,
-   30+ products, 10 zones, 48 transactions). Delete that folder to start again with fresh seed data.
+   Open https://localhost:7141. The first start creates `ApexPost.Web/data/\*.json` (6 branches, 26 staff,
+30+ products, 10 zones, 48 transactions). Delete that folder to start again with fresh seed data.
 
 3. **Tests**: `dotnet test ApexPost.slnx`
-
-4. **Windows program (.exe)**: `publish.bat` creates `publish\ApexPost.Web.exe`; `run-published.bat` starts it.
+4. **Windows program (.exe)**: `publish.bat` creates `publish\\ApexPost.Web.exe`; `run-published.bat` starts it.
 
 ## Demo accounts
 
 Every seeded account uses the demo password you set in step 1.
 
-| Role | Email | Home branch | Can do |
-|---|---|---|---|
-| Counter Clerk | `clerk1.br001@apexpost.test` | BR001 | Sell, ship, money orders, identity checks at BR001 |
-| Branch Manager | `manager.br001@apexpost.test` | BR001 | Everything a clerk does, plus void, refund, stock adjustment, reports |
-| Auditor | `auditor1@apexpost.test` | BR001 | Read-only: reports for all branches, money order audit view, audit log |
-| Administrator | `admin1@apexpost.test` | BR001 | Staff and branch administration, audit log, reports. Does not process sales |
-| Inactive clerk | `clerk4.br002@apexpost.test` | BR002 | Cannot sign in (demonstrates the inactive-staff rule) |
-| Manager of a closed branch | `manager.br006@apexpost.test` | BR006 | Branch BR006 is closed, so it cannot accept transactions |
+|Role|Email|Home branch|Can do|
+|-|-|-|-|
+|Counter Clerk|`clerk1.br001@apexpost.test`|BR001|Sell, ship, money orders, identity checks at BR001|
+|Branch Manager|`manager.br001@apexpost.test`|BR001|Everything a clerk does, plus void, refund, stock adjustment, reports|
+|Auditor|`auditor1@apexpost.test`|BR001|Read-only: reports for all branches, money order audit view, audit log|
+|Administrator|`admin1@apexpost.test`|BR001|Staff and branch administration, audit log, reports. Does not process sales|
+|Inactive clerk|`clerk4.br002@apexpost.test`|BR002|Cannot sign in (demonstrates the inactive-staff rule)|
+|Manager of a closed branch|`manager.br006@apexpost.test`|BR006|Branch BR006 is closed, so it cannot accept transactions|
 
 Other branches follow the same pattern: `manager.br002`, `clerk2.br003`, and so on (BR001 to BR005).
 
@@ -78,17 +77,17 @@ Integration endpoint for courier partners (needs the API key you stored in step 
 curl -k https://localhost:7141/integration/parcel-status/APX123456 -H "X-Api-Key: <your key>" -H "X-Correlation-Id: demo-001"
 ```
 
-| Request | Expected |
-|---|---|
-| Same call without `X-Api-Key` | `401` Problem Details |
-| Same call with a wrong key | `401` |
-| API key not configured at all | `500` |
-| From an address not in `Security:IntegrationAllowedIps` | `403` |
-| `/integration/parcel-status/SLOW0001` | `504` (courier timeout) |
-| `/integration/parcel-status/FAIL0001` | `502` (courier failure) |
-| More than 30 calls a minute with one key | `429` with `Retry-After` |
-| `GET /health` | `200 Healthy` (also while maintenance mode is on) |
-| Sixth login attempt within a minute from one address | `429` |
+|Request|Expected|
+|-|-|
+|Same call without `X-Api-Key`|`401` Problem Details|
+|Same call with a wrong key|`401`|
+|API key not configured at all|`500`|
+|From an address not in `Security:IntegrationAllowedIps`|`403`|
+|`/integration/parcel-status/SLOW0001`|`504` (courier timeout)|
+|`/integration/parcel-status/FAIL0001`|`502` (courier failure)|
+|More than 30 calls a minute with one key|`429` with `Retry-After`|
+|`GET /health`|`200 Healthy` (also while maintenance mode is on)|
+|Sixth login attempt within a minute from one address|`429`|
 
 Maintenance mode: set `"Maintenance": { "Enabled": true }` in `appsettings.json` (it reloads without a restart);
 every page returns `503` with `Retry-After`, `/health` stays available.
@@ -102,4 +101,9 @@ user-secrets or environment variables only.
 
 ## Evidence for assessment
 
-Screenshots and measurements are listed in `docs/EVIDENCE.md` (fill it in while running the app).
+\* Screenshots of each role's screens and the test run are in `docs/Screenshots/`.
+
+\* `AUDIT-SAMPLE.json` is a real export from `/Audit/Export`.
+
+\* The performance measurements (cache, `Task.WhenAll`, `SemaphoreSlim`) are in `DESIGN.md`, section 8. The code that produces them is `ApexPost.UnitTests/Measurements/MeasurementTests.cs`.
+
