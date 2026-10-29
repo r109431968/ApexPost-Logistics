@@ -13,6 +13,7 @@ using ApexPost.Infrastructure.Persistence.Json.Records;
 using ApexPost.Infrastructure.Security;
 using ApexPost.Infrastructure.Seeding;
 using ApexPost.Infrastructure.Shipping;
+using ApexPost.Infrastructure.Verification;
 
 namespace ApexPost.Web.Composition;
 
@@ -60,6 +61,7 @@ public static class ServiceRegistration
         services.AddSingleton<IZoneCatalog, ZoneCatalog>();
         services.AddSingleton<INotificationSink, InMemoryNotificationSink>();
         services.AddSingleton<ICourierTrackingService, SimulatedCourierTrackingService>();
+        services.AddSingleton<IIdentityVerificationService>(_ => new SimulatedIdentityVerificationService());
 
         services.AddSingleton<CounterEvents>();
         services.AddSingleton<NotificationSubscriber>();

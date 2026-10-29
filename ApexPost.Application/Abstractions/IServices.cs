@@ -33,8 +33,7 @@ public interface ICheckoutService
         Guid transactionId, MoneyOrderRequest request, CancellationToken cancellationToken);
 
     Task<CounterTransaction> AttachVerificationAsync(
-        Guid transactionId, DocumentType documentType, string documentNumber, VerificationResult result,
-        CancellationToken cancellationToken);
+        Guid transactionId, DocumentType documentType, string documentNumber, CancellationToken cancellationToken);
 
     Task<CounterTransaction> PayAsync(
         Guid transactionId, PaymentMethod method, CancellationToken cancellationToken);

@@ -6,6 +6,7 @@ using ApexPost.Domain.Entities;
 using ApexPost.Domain.Enums;
 using ApexPost.Domain.ValueObjects;
 using Microsoft.Extensions.Logging.Abstractions;
+using ApexPost.Infrastructure.Verification;
 
 namespace ApexPost.UnitTests.Support;
 
@@ -78,7 +79,8 @@ public sealed class TestWorld
         var checkout = new CheckoutService(
             branches, staff, new RepositoryProductCatalog(productRepo), stock, new RepositoryZoneCatalog(zoneRepo),
             transactions, new ShippingPricer(shipping), new TaxCalculator(new TaxSettings()),
-            shipping.CreateWeightLimitRule(), moneyOrders, stockSettings, events, new AttributeModelValidator(), clock);
+            shipping.CreateWeightLimitRule(), moneyOrders, stockSettings, events, new AttributeModelValidator(),
+            new SimulatedIdentityVerificationService(0), clock);
 
         var reversal = new ReversalService(staff, stock, transactions, events, clock);
 

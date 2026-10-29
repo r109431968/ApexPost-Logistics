@@ -115,7 +115,7 @@ public class MoneyOrderVerificationTests
             () => world.Checkout.PayAsync(transaction.Id, PaymentMethod.Cash, default));
 
         await world.Checkout.AttachVerificationAsync(
-            transaction.Id, DocumentType.Passport, "P7654321", VerificationResult.Passed, default);
+            transaction.Id, DocumentType.Passport, "P7654321", default);
 
         var paid = await world.Checkout.PayAsync(transaction.Id, PaymentMethod.Cash, default);
 

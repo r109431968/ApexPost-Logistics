@@ -35,11 +35,11 @@ Needs the .NET 10 SDK and a trusted HTTPS development certificate (`dotnet dev-c
    dotnet run --project ApexPost.Web --launch-profile https
    ```
 
-   Open https://localhost:7141. The first start creates `ApexPost.Web/data/\*.json` (6 branches, 26 staff,
+Open https://localhost:7141. The first start creates `ApexPost.Web/data/\\\*.json` (6 branches, 26 staff,
 30+ products, 10 zones, 48 transactions). Delete that folder to start again with fresh seed data.
 
 3. **Tests**: `dotnet test ApexPost.slnx`
-4. **Windows program (.exe)**: `publish.bat` creates `publish\\ApexPost.Web.exe`; `run-published.bat` starts it.
+4. **Windows program (.exe)**: `publish.bat` creates `publish\\\\ApexPost.Web.exe`; `run-published.bat` starts it.
 
 ## Demo accounts
 
@@ -68,6 +68,7 @@ Other branches follow the same pattern: `manager.br002`, `clerk2.br003`, and so 
 * Simulated notifications for low stock, high-value money orders and every void or refund.
 * Security and observability: Problem Details errors, correlation ID, request timing, maintenance mode, security headers, HTTPS and HSTS, API key, IP allowlist, cookie authentication with claims and policies, antiforgery, rate limiting, CORS, `/health`.
 * Action filters: audit, validation, performance, domain exception, branch access.
+* \* Identity verification is decided by a simulated verification service, not by the clerk. In the demo, a document number starting with `FAIL` is rejected, one starting with `PEND` stays pending, and any other number passes.
 
 ## Sample requests (Postman or curl)
 

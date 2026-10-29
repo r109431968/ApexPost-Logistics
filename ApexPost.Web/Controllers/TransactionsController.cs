@@ -110,14 +110,15 @@ public sealed class TransactionsController(
     public async Task<IActionResult> Verify(Guid id, VerifyIdentityViewModel model, CancellationToken cancellationToken)
     {
         await EnsureOwnBranchAsync(id, cancellationToken);
-        await checkout.AttachVerificationAsync(
-            id, model.DocumentType, model.DocumentNumber, model.Result, cancellationToken);
+        var updated = await checkout.AttachVerificationAsync(
+            id, model.DocumentType, model.DocumentNumber, cancellationToken);
+        var result = updated.Verification!.Result;
 
-        // Only the type and result are audited. The document number is never written anywhere.
+        // Only the type and the system's result are audited. The document number is never written anywhere.
         AuditNotes.Add(HttpContext, "transactionId", id.ToString());
         AuditNotes.Add(HttpContext, "documentType", model.DocumentType.ToString());
-        AuditNotes.Add(HttpContext, "result", model.Result.ToString());
-        Success("Identity verification recorded.");
+        AuditNotes.Add(HttpContext, "result", result.ToString());
+        Success($"Identity check finished: {result}.");
         return RedirectToAction(nameof(Details), new { id });
     }
 

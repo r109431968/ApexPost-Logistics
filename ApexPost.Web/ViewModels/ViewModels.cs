@@ -125,9 +125,6 @@ public sealed class VerifyIdentityViewModel
     /// <summary>Only used to build the masked value. It is never stored, logged or audited.</summary>
     [Required(ErrorMessage = "Document number is required."), StringLength(40, MinimumLength = 4, ErrorMessage = "Document number must have 4 to 40 characters.")]
     public string DocumentNumber { get; set; } = string.Empty;
-
-    [EnumDataType(typeof(VerificationResult))]
-    public VerificationResult Result { get; set; } = VerificationResult.Passed;
 }
 
 public sealed class PayViewModel

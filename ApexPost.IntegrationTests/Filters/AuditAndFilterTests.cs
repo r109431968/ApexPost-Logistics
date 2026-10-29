@@ -87,7 +87,7 @@ public class AuditAndFilterTests : IClassFixture<ApexFactory>
         });
         await client.PostWithTokenAsync(details, $"/Transactions/Verify/{id}", new Dictionary<string, string>
         {
-            ["DocumentType"] = "Passport", ["DocumentNumber"] = "P1234567", ["Result"] = "Passed"
+            ["DocumentType"] = "Passport", ["DocumentNumber"] = "P1234567"
         });
         var page = await client.GetStringAsync(details);
 

@@ -26,6 +26,7 @@ public sealed class CheckoutService(
     StockSettings stockSettings,
     CounterEvents events,
     IModelValidator validator,
+    IIdentityVerificationService verificationService,
     IClock clock) : ICheckoutService
 {
     public async Task<CounterTransaction> OpenAsync(
@@ -106,10 +107,12 @@ public sealed class CheckoutService(
     }
 
     public async Task<CounterTransaction> AttachVerificationAsync(
-        Guid transactionId, DocumentType documentType, string documentNumber, VerificationResult result,
-        CancellationToken cancellationToken)
+     Guid transactionId, DocumentType documentType, string documentNumber, CancellationToken cancellationToken)
     {
         var transaction = await LoadAsync(transactionId, cancellationToken);
+
+        // The system decides the result. The clerk only supplies the document.
+        var result = await verificationService.VerifyAsync(documentType, documentNumber, cancellationToken);
 
         // The full document number is only used to build the masked value. It is never stored or logged.
         var verification = IdentityVerification.Create(documentType, documentNumber, result, clock.UtcNow);

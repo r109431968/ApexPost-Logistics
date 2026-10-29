@@ -111,7 +111,7 @@
 
         <section class="card">
             <h2>Identity verification</h2>
-            <p class="muted">Only the last four characters are kept.</p>
+            <p class="muted">The system checks the document and decides the result. Only the last four characters are kept.</p>
             <form method="post" asp-controller="Transactions" asp-action="Verify" asp-route-id="@transaction.Id">
                 <label>Document type
                     <select name="DocumentType">
@@ -124,7 +124,7 @@
                         @foreach (var value in new[] { VerificationResult.Passed, VerificationResult.Failed, VerificationResult.Pending }) { <option value="@value">@value</option> }
                     </select>
                 </label>
-                <button type="submit">Record verification</button>
+                <button type="submit">Check document</button>
             </form>
         </section>
     </div>

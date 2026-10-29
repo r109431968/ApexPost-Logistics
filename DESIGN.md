@@ -295,6 +295,8 @@ What is audited: login (success and failure), logout, transaction opened, sale (
 (type and result only), void, refund, stock adjustment, staff create/update/activate/deactivate, branch open/close and every
 access-denied response. Stored in `data/audit.jsonl`, readable by auditors and administrators at `/Audit` and `/Audit/Export`.
 
+Identity verification is a simulated service (`IIdentityVerificationService`). The clerk supplies only the document; the system decides the result. A real provider would replace the simulated class without changing the domain rule.
+
 ## 11\. Known limitations
 
 * The JSON repositories rewrite the whole file on each write and hold everything in memory: right for this lab, not for scale.
