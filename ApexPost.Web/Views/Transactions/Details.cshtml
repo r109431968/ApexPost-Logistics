@@ -113,17 +113,16 @@
             <h2>Identity verification</h2>
             <p class="muted">The system checks the document and decides the result. Only the last four characters are kept.</p>
             <form method="post" asp-controller="Transactions" asp-action="Verify" asp-route-id="@transaction.Id">
-                <label>Document type
+                <label>
+                    Document type
                     <select name="DocumentType">
-                        @foreach (var value in Enum.GetValues<DocumentType>()) { <option value="@value">@value</option> }
+                        @foreach (var value in Enum.GetValues<DocumentType>())
+                        {
+                            <option value="@value">@value</option>
+                        }
                     </select>
                 </label>
                 <label>Document number <input name="DocumentNumber" required minlength="4" maxlength="40" autocomplete="off" /></label>
-                <label>Result
-                    <select name="Result">
-                        @foreach (var value in new[] { VerificationResult.Passed, VerificationResult.Failed, VerificationResult.Pending }) { <option value="@value">@value</option> }
-                    </select>
-                </label>
                 <button type="submit">Check document</button>
             </form>
         </section>
