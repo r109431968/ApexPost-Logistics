@@ -137,10 +137,13 @@ public sealed class CheckoutService(
     {
         var transaction = await LoadAsync(transactionId, cancellationToken);
 
+        // Stock rows are always touched in SKU order, whatever order the clerk added the items. Two sales that share
+        // items then lock them in the same order, so they wait for each other instead of deadlocking.
         var needed = transaction.Lines
             .OfType<RetailLineItem>()
             .GroupBy(line => line.Sku)
             .Select(group => (Sku: group.Key, Quantity: group.Sum(line => line.Quantity)))
+            .OrderBy(need => need.Sku.Value, StringComparer.Ordinal)
             .ToList();
 
         // 1. Check stock first, so nothing changes if it is short.
