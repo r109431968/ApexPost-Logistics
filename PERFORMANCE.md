@@ -4,7 +4,7 @@ Rule of this document: **every number and every plan comes from my own SSMS run*
 
 Database: `ApexPostDb` on `(localdb)\MSSQLLocalDB`. Scripts: [sql/08_performance_workloads.sql](sql/08_performance_workloads.sql) (the workloads),
 [sql/09_perf_load_data.sql](sql/09_perf_load_data.sql) (extra data), [sql/10_perf_cleanup.sql](sql/10_perf_cleanup.sql) (removes the extra data).
-Screenshots go in `docs/performance/` (create the folder), named as in the tables below.
+Screenshots are in [docs/performance](docs/performance/) and are embedded below under each table.
 
 ## 1. How the data was prepared
 
@@ -36,6 +36,17 @@ All numbers are from the second run of each statement (warm cache, physical read
 | 3 | Top 10 products by revenue | Clustered Index Scan 74 % (300 241 rows) + Hash Match Aggregate, `w3-before.png` | 8 174 | 250 ms / 303 ms | `TransactionLines (LineType, Sku)` INCLUDE (Quantity, UnitPrice) | Index Seek + Stream Aggregate, `w3-after.png` | **2 210** | 140 ms / 153 ms |
 | 4 | Latest 50 audit entries | Clustered Index Scan 22 % (100 015 rows) + Top N Sort 78 %, `w4-before.png` | 2 841 | 63 ms / 130 ms | `AuditEntries (TimestampUtc DESC)` | Index Scan in index order + Top + Nested Loops, `w4-after.png` | **165** | 0 ms / 17 ms |
 
+Plans before and after (screenshots of the actual execution plans):
+
+![w1-before](docs/performance/w1-before.png)
+![w1-after](docs/performance/w1-after.png)
+![w2-before](docs/performance/w2-before.png)
+![w2-after](docs/performance/w2-after.png)
+![w3-before](docs/performance/w3-before.png)
+![w3-after](docs/performance/w3-after.png)
+![w4-before](docs/performance/w4-before.png)
+![w4-after](docs/performance/w4-after.png)
+
 What the plans show:
 
 * **Workload 1.** Before, SQL Server read the whole table, because BR001 owns about 70 % of the rows, so the single-column branch index was not worth using. It then sorted 146 716 rows to keep 20 (the Sort was 73 % of the cost).
@@ -45,43 +56,17 @@ What the plans show:
 * **Workload 3.** The covering index replaces the scan of the full table (8 174 reads) with an index range for `LineType = 'Retail'` that is already sorted by SKU. SQL Server can therefore use a Stream Aggregate instead of a Hash Match Aggregate. Reads dropped to 2 210 (about 3.7 times fewer).
 * **Workload 4.** The index is ordered by `TimestampUtc DESC`, so the first 50 entries are read directly (165 reads, mostly the lookups into the clustered index for the columns that are not in the index). The Sort is gone.
 
-## 4. Applying the index migration
+## 4. The index migration that was applied
 
-Do this only **after** the "before" measurements.
+Migration `AddReportingIndexes` (reviewed before applying; it only changes indexes). The idempotent script is regenerated in [database/migrations-idempotent.sql](database/migrations-idempotent.sql).
 
-1. Open `ApexPost.Infrastructure/Persistence/Sql/Configurations/TransactionConfigurations.cs`. In `CounterTransactionConfiguration.Configure` add:
+* Dropped: `IX_CounterTransactions_BranchCode` (replaced by the composite index below).
+* `CounterTransactions (BranchCode, OpenedAtUtc DESC)` INCLUDE (`Status`, `TaxTotal`): newest rows of a branch (workload 1).
+* `CounterTransactions (BranchCode, Status, OpenedAtUtc)` INCLUDE (`TaxTotal`): one day of sales (workload 2).
+* `TransactionLines (LineType, Sku)` INCLUDE (`Quantity`, `UnitPrice`): top products (workload 3).
+* `AuditEntries (TimestampUtc DESC)`: latest audit entries (workload 4).
 
-   ```csharp
-   builder.HasIndex(x => new { x.BranchCode, x.OpenedAtUtc })
-       .IsDescending(false, true)
-       .IncludeProperties(x => new { x.Status, x.TaxTotal });
-   builder.HasIndex(x => new { x.BranchCode, x.Status, x.OpenedAtUtc })
-       .IncludeProperties(x => x.TaxTotal);
-   ```
-
-   In `TransactionLineConfiguration.Configure` add:
-
-   ```csharp
-   builder.HasIndex(x => new { x.LineType, x.Sku })
-       .IncludeProperties(x => new { x.Quantity, x.UnitPrice });
-   ```
-
-2. In `SystemConfigurations.cs`, in `AuditEntryConfiguration.Configure`, add:
-
-   ```csharp
-   builder.HasIndex(x => x.TimestampUtc).IsDescending();
-   ```
-
-3. Create and apply the migration (from the solution folder):
-
-   ```bat
-   dotnet ef migrations add AddReportingIndexes --project ApexPost.Infrastructure --startup-project ApexPost.Web --output-dir Persistence/Sql/Migrations
-   dotnet ef database update --project ApexPost.Infrastructure --startup-project ApexPost.Web
-   dotnet ef migrations script --idempotent --project ApexPost.Infrastructure --startup-project ApexPost.Web --output database/migrations-idempotent.sql
-   ```
-
-   Open the generated migration and check that it only creates the new indexes (and drops `IX_CounterTransactions_BranchCode`, which the new composite index replaces).
-4. Run script 08 again and fill the "after" columns.
+Key order: equality column first (`BranchCode`), then the range or sort column (`OpenedAtUtc`), so a seek lands on the branch and reads the rows already in order. The INCLUDE columns make each index covering for its query, so no key lookups are needed.
 
 ## 5. A non-SARGable predicate and its fix
 
@@ -94,6 +79,12 @@ Script 08, section "NON-SARGable", plus one extra variant (A2). All three return
 | CPU / elapsed after | 0 ms / 16 ms | 31 ms / 57 ms | 16 ms / 68 ms |
 | Estimated vs actual rows | **1 vs 1 059 (105 900 %)** | 1 191 vs 1 059 | 13 528 vs 1 059 before the index (see `sargable-b-before.png`) |
 | Plan | Constant Scan + Nested Loops (a seek on a range that SQL Server derived itself), `sargable-a-after.png` | Index Seek on `BranchCode` only, then the functions are applied to every BR001 row as a residual filter, `sargable-a2-after.png` | Index Seek on `(BranchCode, OpenedAtUtc)` range, `sargable-b-after.png` |
+
+![sargable-a-before](docs/performance/sargable-a-before.png)
+![sargable-a-after](docs/performance/sargable-a-after.png)
+![sargable-a2-after](docs/performance/sargable-a2-after.png)
+![sargable-b-before](docs/performance/sargable-b-before.png)
+![sargable-b-after](docs/performance/sargable-b-after.png)
 
 What this shows:
 
@@ -115,6 +106,11 @@ The same statement text is sent through `sp_executesql` with different parameter
 | CPU / elapsed | 63 ms / 114 ms | 62 ms / 765 ms | 78 ms / 785 ms | 110 ms / 793 ms |
 | Compile time | | | 3 ms | |
 | Screenshot | `sniff-1.png` | `sniff-2.png` | `sniff-fix-recompile.png` | `sniff-fix-unknown.png` |
+
+![sniff-1](docs/performance/sniff-1.png)
+![sniff-2](docs/performance/sniff-2.png)
+![sniff-fix-recompile](docs/performance/sniff-fix-recompile.png)
+![sniff-fix-unknown](docs/performance/sniff-fix-unknown.png)
 
 Explanation:
 
@@ -189,6 +185,6 @@ For comparison, the table data itself is `PK_CounterTransactions` 43 280 KB, `PK
 Every insert into `CounterTransactions` now maintains three secondary indexes plus the primary key instead of two, and every insert into `TransactionLines` and `AuditEntries` maintains one more.
 A counter system reads the lists, reports and audit page far more often than it inserts, so the trade is good here. If the insert rate grew a lot (for example bulk imports), I would watch insert time and the number of page splits, and I would drop `IX_CounterTransactions_BranchCode_Status_OpenedAtUtc` first, because it mostly helps one report that already runs as a stored procedure.
 
-## 10. Cleaning up
+## 10. Test data used for the measurements
 
-Run [sql/10_perf_cleanup.sql](sql/10_perf_cleanup.sql) when you are done, so the demo database is small again. It deletes only the rows tagged `perf-load`.
+The extra rows from script 09 are tagged `CreatedBy = 'perf-load'`. [sql/10_perf_cleanup.sql](sql/10_perf_cleanup.sql) removes only those rows, so the demo database can be returned to its seeded size (240 transactions).
