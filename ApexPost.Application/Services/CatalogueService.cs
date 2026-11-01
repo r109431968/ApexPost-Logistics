@@ -17,7 +17,8 @@ public sealed class CatalogueService(
     IRepository<Staff, Guid> staff,
     StockSettings stockSettings,
     CounterEvents events,
-    IClock clock) : ICatalogueService
+    IClock clock,
+    IUnitOfWork unitOfWork) : ICatalogueService
 {
     public async Task<IReadOnlyList<CatalogueRow>> ListAsync(
         BranchCode branch, ProductCategory? category, string? search, CancellationToken cancellationToken)
@@ -59,39 +60,32 @@ public sealed class CatalogueService(
         if (await products.GetAsync(sku, cancellationToken) is null)
             throw new NotFoundException(nameof(Product), sku);
 
-        var gate = StockGate.For(actor.HomeBranch);
-        await gate.WaitAsync(cancellationToken);
-        try
+        var item = await stock.GetByIdAsync(StockItem.KeyFor(actor.HomeBranch, sku), cancellationToken);
+
+        if (item is null)
         {
-            var item = await stock.GetByIdAsync(StockItem.KeyFor(actor.HomeBranch, sku), cancellationToken);
+            if (delta < 0)
+                throw new InsufficientStockException(sku, 0, -delta);
 
-            if (item is null)
-            {
-                if (delta < 0)
-                    throw new InsufficientStockException(sku, 0, -delta);
-
-                item = new StockItem(actor.HomeBranch, sku, delta);
-                await stock.AddAsync(item, cancellationToken);
-            }
+            item = new StockItem(actor.HomeBranch, sku, delta);
+            await stock.AddAsync(item, cancellationToken);
+        }
+        else
+        {
+            if (delta > 0)
+                item.Add(delta);
             else
-            {
-                if (delta > 0)
-                    item.Add(delta);
-                else
-                    item.Remove(-delta);
+                item.Remove(-delta);
 
-                await stock.UpdateAsync(item, cancellationToken);
-            }
-
-            if (item.Quantity <= stockSettings.LowStockThreshold)
-                events.Publish(new StockLowEvent(
-                    item.BranchCode, item.Sku, item.Quantity, stockSettings.LowStockThreshold, clock.UtcNow));
-
-            return item;
+            await stock.UpdateAsync(item, cancellationToken);
         }
-        finally
-        {
-            gate.Release();
-        }
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (item.Quantity <= stockSettings.LowStockThreshold)
+            events.Publish(new StockLowEvent(
+                item.BranchCode, item.Sku, item.Quantity, stockSettings.LowStockThreshold, clock.UtcNow));
+
+        return item;
     }
 }

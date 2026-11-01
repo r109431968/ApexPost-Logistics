@@ -17,6 +17,7 @@ builder.Services.AddApexPostWeb();
 var app = builder.Build();
 
 app.Services.AttachEventSubscribers();
+await app.MigrateDatabaseAsync();
 await app.SeedDemoDataAsync();
 
 // Pipeline order. The reason for every position is explained in DESIGN.md.

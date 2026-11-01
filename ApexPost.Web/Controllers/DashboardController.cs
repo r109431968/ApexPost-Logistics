@@ -16,7 +16,7 @@ public sealed class DashboardController(
         if (found is null)
             return NotFound();
 
-        // Sales, stock and alerts are built in parallel inside the report service (Task.WhenAll).
+        // Sales, stock and alerts are built one after another inside the report service (one DbContext per request).
         var dashboard = await reports.DashboardAsync(code, cancellationToken);
 
         return View(new DashboardViewModel

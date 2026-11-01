@@ -11,7 +11,8 @@ public sealed class ReversalService(
     IRepository<StockItem, string> stock,
     IRepository<CounterTransaction, Guid> transactions,
     CounterEvents events,
-    IClock clock) : IReversalService
+    IClock clock,
+    IUnitOfWork unitOfWork) : IReversalService
 {
     public Task<CounterTransaction> VoidAsync(
         Guid transactionId, Guid managerId, string reason, CancellationToken cancellationToken) =>
@@ -24,41 +25,32 @@ public sealed class ReversalService(
     private async Task<CounterTransaction> ReverseAsync(
         Guid transactionId, Guid managerId, string reason, bool isRefund, CancellationToken cancellationToken)
     {
-        var branch = (await transactions.GetByIdAsync(transactionId, cancellationToken)
-            ?? throw new NotFoundException(nameof(CounterTransaction), transactionId)).BranchCode;
-        var gate = StockGate.For(branch);
+        var transaction = await transactions.GetByIdAsync(transactionId, cancellationToken)
+            ?? throw new NotFoundException(nameof(CounterTransaction), transactionId);
+        var manager = await staff.GetByIdAsync(managerId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Staff), managerId);
 
-        await gate.WaitAsync(cancellationToken);
-        try
-        {
-            var transaction = await transactions.GetByIdAsync(transactionId, cancellationToken)
-                ?? throw new NotFoundException(nameof(CounterTransaction), transactionId);
-            var manager = await staff.GetByIdAsync(managerId, cancellationToken)
-                ?? throw new NotFoundException(nameof(Staff), managerId);
+        var stockWasTaken = transaction.Status == TransactionStatus.Paid;
 
-            var stockWasTaken = transaction.Status == TransactionStatus.Paid;
+        // The Domain enforces: Branch Manager role, same branch, reason required, valid status.
+        if (isRefund)
+            transaction.Refund(manager, reason);
+        else
+            transaction.Void(manager, reason);
 
-            // The Domain enforces: Branch Manager role, same branch, reason required, valid status.
-            if (isRefund)
-                transaction.Refund(manager, reason);
-            else
-                transaction.Void(manager, reason);
+        if (stockWasTaken)
+            await RestockAsync(transaction, cancellationToken);
 
-            if (stockWasTaken)
-                await RestockAsync(transaction, cancellationToken);
+        await transactions.UpdateAsync(transaction, cancellationToken);
 
-            await transactions.UpdateAsync(transaction, cancellationToken);
+        // One commit: the new status and the returned stock are written together.
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
-            events.Publish(new TransactionVoidedEvent(
-                transaction.Id, transaction.BranchCode, manager.Id,
-                transaction.ReversalReason ?? reason, isRefund, clock.UtcNow));
+        events.Publish(new TransactionVoidedEvent(
+            transaction.Id, transaction.BranchCode, manager.Id,
+            transaction.ReversalReason ?? reason, isRefund, clock.UtcNow));
 
-            return transaction;
-        }
-        finally
-        {
-            gate.Release();
-        }
+        return transaction;
     }
 
     private async Task RestockAsync(CounterTransaction transaction, CancellationToken cancellationToken)

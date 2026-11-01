@@ -29,6 +29,7 @@ public sealed class TestWorld
     public required CounterEvents Events { get; init; }
     public required CheckoutService Checkout { get; init; }
     public required ReversalService Reversal { get; init; }
+    public required SpyUnitOfWork Uow { get; init; }
 
     public MoneyOrderSettings MoneyOrders { get; } = new();
     public StockSettings StockRules { get; } = new();
@@ -75,14 +76,15 @@ public sealed class TestWorld
         var shipping = new ShippingSettings();
         var moneyOrders = new MoneyOrderSettings();
         var stockSettings = new StockSettings();
+        var uow = new SpyUnitOfWork();
 
         var checkout = new CheckoutService(
             branches, staff, new RepositoryProductCatalog(productRepo), stock, new RepositoryZoneCatalog(zoneRepo),
             transactions, new ShippingPricer(shipping), new TaxCalculator(new TaxSettings()),
             shipping.CreateWeightLimitRule(), moneyOrders, stockSettings, events, new AttributeModelValidator(),
-            new SimulatedIdentityVerificationService(0), clock);
+            new SimulatedIdentityVerificationService(0), clock, uow);
 
-        var reversal = new ReversalService(staff, stock, transactions, events, clock);
+        var reversal = new ReversalService(staff, stock, transactions, events, clock, uow);
 
         return new TestWorld
         {
@@ -96,7 +98,8 @@ public sealed class TestWorld
             Transactions = transactions,
             Events = events,
             Checkout = checkout,
-            Reversal = reversal
+            Reversal = reversal,
+            Uow = uow
         };
     }
 }

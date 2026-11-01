@@ -117,18 +117,19 @@ public sealed class ReportService(
             .ToList();
     }
 
-    /// <summary>The three pieces are independent, so they run in parallel with Task.WhenAll.</summary>
+    /// <summary>
+    /// The three pieces run one after another. They share the request's DbContext, and a DbContext allows only one
+    /// operation at a time, so Task.WhenAll would throw. (Week 3 replaces these in-memory reports with SQL.)
+    /// </summary>
     public async Task<BranchDashboard> DashboardAsync(BranchCode branch, CancellationToken cancellationToken)
     {
         var today = TransactionSpecs.DayOf(clock.UtcNow);
 
-        var salesTask = DailySalesAsync(branch, today, cancellationToken);
-        var stockTask = LowStockAsync(branch, null, cancellationToken);
-        var alertsTask = AlertsAsync(branch, today, cancellationToken);
+        var sales = await DailySalesAsync(branch, today, cancellationToken);
+        var stock = await LowStockAsync(branch, null, cancellationToken);
+        var alerts = await AlertsAsync(branch, today, cancellationToken);
 
-        await Task.WhenAll(salesTask, stockTask, alertsTask);
-
-        return new BranchDashboard(branch, today, await salesTask, await stockTask, await alertsTask);
+        return new BranchDashboard(branch, today, sales, stock, alerts);
     }
 
     private async Task<IReadOnlyList<DashboardAlert>> AlertsAsync(

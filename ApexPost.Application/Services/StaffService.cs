@@ -13,7 +13,8 @@ public sealed class StaffService(
     IRepository<Branch, BranchCode> branches,
     ICredentialStore credentials,
     IPasswordHasher hasher,
-    IModelValidator validator) : IStaffService
+    IModelValidator validator,
+    IUnitOfWork unitOfWork) : IStaffService
 {
     public const int MinimumPasswordLength = 12;
 
@@ -36,6 +37,9 @@ public sealed class StaffService(
         var member = new Staff(Guid.NewGuid(), request.Name, request.Email, request.Role, branch);
         await staff.AddAsync(member, cancellationToken);
         await credentials.SetHashAsync(member.Id, hasher.Hash(password), cancellationToken);
+
+        // One commit: the staff row and the password hash are saved together.
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return member;
     }
 
@@ -52,6 +56,7 @@ public sealed class StaffService(
 
         member.UpdateDetails(request.Name, request.Email, request.Role, branch);
         await staff.UpdateAsync(member, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return member;
     }
 
@@ -69,6 +74,7 @@ public sealed class StaffService(
             member.Deactivate();
 
         await staff.UpdateAsync(member, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     private void Validate(StaffRequest request)

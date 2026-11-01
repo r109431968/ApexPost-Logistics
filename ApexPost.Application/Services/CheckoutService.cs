@@ -27,7 +27,8 @@ public sealed class CheckoutService(
     CounterEvents events,
     IModelValidator validator,
     IIdentityVerificationService verificationService,
-    IClock clock) : ICheckoutService
+    IClock clock,
+    IUnitOfWork unitOfWork) : ICheckoutService
 {
     public async Task<CounterTransaction> OpenAsync(
         BranchCode branchCode, Guid counterId, Guid clerkId, CancellationToken cancellationToken)
@@ -41,6 +42,7 @@ public sealed class CheckoutService(
 
         var transaction = CounterTransaction.Open(branch, counter, clerk, clock.UtcNow);
         await transactions.AddAsync(transaction, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return transaction;
     }
 
@@ -66,6 +68,7 @@ public sealed class CheckoutService(
 
         transaction.AddLine(new RetailLineItem(sku, product.Name, quantity, product.UnitPrice, product.TaxCategory));
         await transactions.UpdateAsync(transaction, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return transaction;
     }
 
@@ -84,6 +87,7 @@ public sealed class CheckoutService(
 
         transaction.AddLine(new ShippingLineItem(type, weight, zone.Code, level, price));
         await transactions.UpdateAsync(transaction, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return transaction;
     }
 
@@ -103,11 +107,12 @@ public sealed class CheckoutService(
 
         transaction.AddLine(new MoneyOrderLineItem(amount, fee, request.Sender, request.Recipient));
         await transactions.UpdateAsync(transaction, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return transaction;
     }
 
     public async Task<CounterTransaction> AttachVerificationAsync(
-     Guid transactionId, DocumentType documentType, string documentNumber, CancellationToken cancellationToken)
+        Guid transactionId, DocumentType documentType, string documentNumber, CancellationToken cancellationToken)
     {
         var transaction = await LoadAsync(transactionId, cancellationToken);
 
@@ -119,76 +124,71 @@ public sealed class CheckoutService(
         transaction.AttachVerification(verification);
 
         await transactions.UpdateAsync(transaction, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return transaction;
     }
 
+    /// <summary>
+    /// No in-process lock here. The stock rows carry a rowversion, so if another clerk sold the same stock first,
+    /// the single SaveChanges below fails with DbUpdateConcurrencyException and nothing is written.
+    /// </summary>
     public async Task<CounterTransaction> PayAsync(
         Guid transactionId, PaymentMethod method, CancellationToken cancellationToken)
     {
-        // The lock is per branch. The branch is read first, then the transaction is loaded again inside the
-        // lock, so the stock check always sees fresh data.
-        var branch = (await LoadAsync(transactionId, cancellationToken)).BranchCode;
-        var gate = StockGate.For(branch);
+        var transaction = await LoadAsync(transactionId, cancellationToken);
 
-        await gate.WaitAsync(cancellationToken);
-        try
+        var needed = transaction.Lines
+            .OfType<RetailLineItem>()
+            .GroupBy(line => line.Sku)
+            .Select(group => (Sku: group.Key, Quantity: group.Sum(line => line.Quantity)))
+            .ToList();
+
+        // 1. Check stock first, so nothing changes if it is short.
+        var reservations = new List<(StockItem Item, int Quantity)>();
+        foreach (var (sku, quantity) in needed)
         {
-            var transaction = await LoadAsync(transactionId, cancellationToken);
+            var item = await stock.GetByIdAsync(StockItem.KeyFor(transaction.BranchCode, sku), cancellationToken);
+            if (item is null || item.Quantity < quantity)
+                throw new InsufficientStockException(sku, item?.Quantity ?? 0, quantity);
 
-            var needed = transaction.Lines
-                .OfType<RetailLineItem>()
-                .GroupBy(line => line.Sku)
-                .Select(group => (Sku: group.Key, Quantity: group.Sum(line => line.Quantity)))
-                .ToList();
-
-            // 1. Check stock first, so nothing changes if it is short.
-            var reservations = new List<(StockItem Item, int Quantity)>();
-            foreach (var (sku, quantity) in needed)
-            {
-                var item = await stock.GetByIdAsync(StockItem.KeyFor(transaction.BranchCode, sku), cancellationToken);
-                if (item is null || item.Quantity < quantity)
-                    throw new InsufficientStockException(sku, item?.Quantity ?? 0, quantity);
-
-                reservations.Add((item, quantity));
-            }
-
-            // 2. Domain rules (empty basket, money order verification, status) run before stock moves.
-            var threshold = new Money(moneyOrderSettings.IdentityVerificationThreshold);
-            transaction.Pay(method, threshold, tax.AsRule());
-
-            // 3. Reduce stock and save.
-            var lowStock = new List<StockLowEvent>();
-            foreach (var (item, quantity) in reservations)
-            {
-                item.Remove(quantity);
-                await stock.UpdateAsync(item, cancellationToken);
-
-                if (item.Quantity <= stockSettings.LowStockThreshold)
-                    lowStock.Add(new StockLowEvent(
-                        item.BranchCode, item.Sku, item.Quantity, stockSettings.LowStockThreshold, clock.UtcNow));
-            }
-
-            await transactions.UpdateAsync(transaction, cancellationToken);
-
-            // 4. Tell the rest of the system, only after everything is saved.
-            var now = clock.UtcNow;
-            events.Publish(new TransactionCompletedEvent(
-                transaction.Id, transaction.BranchCode, transaction.ClerkId, transaction.Total, now));
-
-            var verified = transaction.Verification is { Result: VerificationResult.Passed };
-            foreach (var order in transaction.Lines.OfType<MoneyOrderLineItem>())
-                events.Publish(new MoneyOrderIssuedEvent(
-                    transaction.Id, transaction.BranchCode, order.Amount, verified, now));
-
-            foreach (var alert in lowStock)
-                events.Publish(alert);
-
-            return transaction;
+            reservations.Add((item, quantity));
         }
-        finally
+
+        // 2. Domain rules (empty basket, money order verification, status) run before stock moves.
+        var threshold = new Money(moneyOrderSettings.IdentityVerificationThreshold);
+        transaction.Pay(method, threshold, tax.AsRule());
+
+        // 3. Stage the stock decrement and the paid transaction.
+        var lowStock = new List<StockLowEvent>();
+        foreach (var (item, quantity) in reservations)
         {
-            gate.Release();
+            item.Remove(quantity);
+            await stock.UpdateAsync(item, cancellationToken);
+
+            if (item.Quantity <= stockSettings.LowStockThreshold)
+                lowStock.Add(new StockLowEvent(
+                    item.BranchCode, item.Sku, item.Quantity, stockSettings.LowStockThreshold, clock.UtcNow));
         }
+
+        await transactions.UpdateAsync(transaction, cancellationToken);
+
+        // 4. One commit: the transaction, its payment and every stock decrement are written together or not at all.
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // 5. Tell the rest of the system, only after everything is saved.
+        var now = clock.UtcNow;
+        events.Publish(new TransactionCompletedEvent(
+            transaction.Id, transaction.BranchCode, transaction.ClerkId, transaction.Total, now));
+
+        var verified = transaction.Verification is { Result: VerificationResult.Passed };
+        foreach (var order in transaction.Lines.OfType<MoneyOrderLineItem>())
+            events.Publish(new MoneyOrderIssuedEvent(
+                transaction.Id, transaction.BranchCode, order.Amount, verified, now));
+
+        foreach (var alert in lowStock)
+            events.Publish(alert);
+
+        return transaction;
     }
 
     private async Task<CounterTransaction> LoadAsync(Guid transactionId, CancellationToken cancellationToken) =>

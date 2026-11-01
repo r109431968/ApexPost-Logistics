@@ -10,6 +10,7 @@ public sealed class CredentialSeeder(
     IRepository<Staff, Guid> staff,
     ICredentialStore credentials,
     IPasswordHasher hasher,
+    IUnitOfWork unitOfWork,
     ILogger<CredentialSeeder> logger)
 {
     public async Task SeedAsync(CancellationToken cancellationToken)
@@ -34,6 +35,9 @@ public sealed class CredentialSeeder(
         }
 
         if (created > 0)
+        {
+            await unitOfWork.SaveChangesAsync(cancellationToken);
             logger.LogInformation("Set the demo password for {Count} staff accounts.", created);
+        }
     }
 }
