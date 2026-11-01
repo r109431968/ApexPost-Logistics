@@ -199,7 +199,11 @@ public sealed class DomainExceptionFilter(ILogger<DomainExceptionFilter> logger)
         logger.LogInformation("Business error {Status}: {Message}", status, message);
 
         var request = context.HttpContext.Request;
-        var isForm = HttpMethods.IsPost(request.Method) && context.ActionDescriptor is ControllerActionDescriptor;
+        // A client that asks for JSON (or calls /integration) always gets Problem Details with the real status (400, 404, 409...).
+        // Only a browser form post is sent back to its page with a message.
+        var wantsJson = request.Path.StartsWithSegments("/integration")
+            || request.Headers.Accept.ToString().Contains("application/json", StringComparison.OrdinalIgnoreCase);
+        var isForm = !wantsJson && HttpMethods.IsPost(request.Method) && context.ActionDescriptor is ControllerActionDescriptor;
 
         if (isForm)
         {

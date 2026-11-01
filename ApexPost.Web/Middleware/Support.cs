@@ -86,11 +86,17 @@ public static class ProblemMapping
             case NotFoundException notFound:
                 (status, title, message) = (StatusCodes.Status404NotFound, "Not found", notFound.Message);
                 return true;
+            case ConcurrencyConflictException conflict:
+                (status, title, message) = (StatusCodes.Status409Conflict, "Concurrent change", conflict.Message);
+                return true;
+            case DuplicateValueException duplicate:
+                (status, title, message) = (StatusCodes.Status409Conflict, "Duplicate value", duplicate.Message);
+                return true;
             case InsufficientStockException stock:
                 (status, title, message) = (StatusCodes.Status409Conflict, "Insufficient stock", stock.Message);
                 return true;
             case DomainException domain:
-                (status, title, message) = (StatusCodes.Status422UnprocessableEntity, "Business rule violated", domain.Message);
+                (status, title, message) = (StatusCodes.Status400BadRequest, "Business rule violated", domain.Message);
                 return true;
             case ExternalServiceTimeoutException timeout:
                 (status, title, message) = (StatusCodes.Status504GatewayTimeout, "Upstream timeout", timeout.Message);

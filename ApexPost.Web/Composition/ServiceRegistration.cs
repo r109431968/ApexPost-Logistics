@@ -6,11 +6,11 @@ using ApexPost.Domain.Rules;
 using ApexPost.Infrastructure;
 using ApexPost.Infrastructure.Caching;
 using ApexPost.Infrastructure.Notifications;
-using ApexPost.Infrastructure.Persistence.Json;
 using ApexPost.Infrastructure.Persistence.Sql;
+using ApexPost.Infrastructure.Persistence.Sql.Procedures;
+using ApexPost.Infrastructure.Persistence.Sql.Reporting;
 using ApexPost.Infrastructure.Persistence.Sql.Repositories;
 using ApexPost.Infrastructure.Persistence.Sql.Stores;
-using ApexPost.Infrastructure.Security;
 using ApexPost.Infrastructure.Seeding;
 using ApexPost.Infrastructure.Shipping;
 using ApexPost.Infrastructure.Verification;
@@ -31,7 +31,6 @@ public static class ServiceRegistration
 
     public static IServiceCollection AddApexPost(this IServiceCollection services)
     {
-        services.AddSettings<JsonStorageSettings>(JsonStorageSettings.SectionName);
         services.AddSettings<ShippingSettings>(ShippingSettings.SectionName);
         services.AddSettings<TaxSettings>(TaxSettings.SectionName);
         services.AddSettings<MoneyOrderSettings>(MoneyOrderSettings.SectionName);
@@ -70,6 +69,7 @@ public static class ServiceRegistration
         services.AddScoped<ICounterTransactionRepository, CounterTransactionRepository>();
         services.AddScoped<IRepository<CounterTransaction, Guid>>(sp => sp.GetRequiredService<ICounterTransactionRepository>());
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IProductPriceWriter, ProductPriceWriter>();
 
         services.AddScoped<ICredentialStore, SqlCredentialStore>();
         services.AddSingleton<IAuditStore, SqlAuditStore>();
@@ -99,9 +99,11 @@ public static class ServiceRegistration
         services.AddScoped<ILoginService, LoginService>();
         services.AddScoped<IStaffService, StaffService>();
         services.AddScoped<IBranchService, BranchService>();
-        services.AddScoped<ICatalogueService, CatalogueService>();
+        // The web application uses the stored-procedure versions of the catalogue and report services.
+        services.AddScoped<ICatalogueService, SqlCatalogueService>();
+        services.AddScoped<IPriceRevisionService, PriceRevisionService>();
         services.AddScoped<ITransactionQueries, TransactionQueries>();
-        services.AddScoped<IReportService, ReportService>();
+        services.AddScoped<IReportService, SqlReportService>();
 
         services.AddTransient<DemoDataSeeder>();
         services.AddTransient<CredentialSeeder>();

@@ -29,9 +29,12 @@ public sealed class DemoDataSeeder(
     ILogger<DemoDataSeeder> logger)
 {
     private const int RandomSeed = 20261025;
-    private const int TransactionCount = 240;
-    private const int OpenBasketIndex = 239;
+    private const int MinimumTransactionCount = 32;
     private const int FailedVerificationIndex = 13;
+
+    /// <summary>The last transaction is left as an open basket, so the demo shows an unpaid sale.</summary>
+    private int TransactionCount => Math.Max(settings.TransactionCount, MinimumTransactionCount);
+    private int OpenBasketIndex => TransactionCount - 1;
 
     private const TaxCategory Std = TaxCategory.Standard;
     private const TaxCategory Red = TaxCategory.Reduced;
