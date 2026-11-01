@@ -5,7 +5,9 @@ using ApexPost.Domain.ValueObjects;
 
 namespace ApexPost.Application.Services;
 
-public sealed class BranchService(IRepository<Branch, BranchCode> branches) : IBranchService
+public sealed class BranchService(
+    IRepository<Branch, BranchCode> branches,
+    IUnitOfWork unitOfWork) : IBranchService
 {
     public async Task<IReadOnlyList<Branch>> ListAsync(CancellationToken cancellationToken) =>
         (await branches.ListAsync(cancellationToken)).OrderBy(branch => branch.Code.Value, StringComparer.Ordinal).ToList();
@@ -24,5 +26,6 @@ public sealed class BranchService(IRepository<Branch, BranchCode> branches) : IB
             branch.Close();
 
         await branches.UpdateAsync(branch, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

@@ -196,9 +196,9 @@ public static class WebServiceRegistration
                 CorrelationId = http.CorrelationId
             }, CancellationToken.None);
         }
-        catch (IOException)
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            // The denial itself still stands even if the audit file cannot be written.
+            // The denial itself still stands even if the audit entry cannot be written to the database.
         }
     }
 }

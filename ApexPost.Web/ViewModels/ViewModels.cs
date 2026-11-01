@@ -47,6 +47,7 @@ public sealed class CatalogueViewModel
     public ProductCategory? Category { get; init; }
     public string? Search { get; init; }
     public bool CanAdjust { get; init; }
+    public bool CanRevisePrices { get; init; }
 }
 
 public sealed class StockAdjustmentViewModel
@@ -59,6 +60,16 @@ public sealed class StockAdjustmentViewModel
 
     [Required(ErrorMessage = "A reason is required."), StringLength(200)]
     public string Reason { get; set; } = string.Empty;
+}
+
+/// <summary>Only these two fields can be posted. Nothing else on the form is bound.</summary>
+public sealed class PriceRevisionViewModel
+{
+    [Required(ErrorMessage = "Choose a category.")]
+    public ProductCategory? Category { get; set; }
+
+    [Range(-100, 100, ErrorMessage = "The percentage must be between -100 and 100.")]
+    public decimal Percent { get; set; }
 }
 
 public sealed class TransactionListViewModel

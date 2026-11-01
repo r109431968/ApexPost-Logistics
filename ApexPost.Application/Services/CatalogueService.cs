@@ -11,13 +11,19 @@ using ApexPost.Domain.ValueObjects;
 
 namespace ApexPost.Application.Services;
 
-public sealed class CatalogueService(
+/// <summary>
+/// Catalogue listing and stock adjustment. The rules (who may adjust, no zero change, a reason is required) live here.
+/// HOW the stock row is changed is a replaceable step (<see cref="ApplyAdjustmentAsync"/>): this class does it through the
+/// repository and the unit of work, and the web application uses a subclass that calls the usp_AdjustStock stored procedure.
+/// </summary>
+public class CatalogueService(
     IProductCatalog products,
     IRepository<StockItem, string> stock,
     IRepository<Staff, Guid> staff,
     StockSettings stockSettings,
     CounterEvents events,
-    IClock clock) : ICatalogueService
+    IClock clock,
+    IUnitOfWork unitOfWork) : ICatalogueService
 {
     public async Task<IReadOnlyList<CatalogueRow>> ListAsync(
         BranchCode branch, ProductCategory? category, string? search, CancellationToken cancellationToken)
@@ -59,39 +65,44 @@ public sealed class CatalogueService(
         if (await products.GetAsync(sku, cancellationToken) is null)
             throw new NotFoundException(nameof(Product), sku);
 
-        var gate = StockGate.For(actor.HomeBranch);
-        await gate.WaitAsync(cancellationToken);
-        try
+        var item = await ApplyAdjustmentAsync(actor, sku, delta, reason, cancellationToken);
+
+        if (item.Quantity <= stockSettings.LowStockThreshold)
+            events.Publish(new StockLowEvent(
+                item.BranchCode, item.Sku, item.Quantity, stockSettings.LowStockThreshold, clock.UtcNow));
+
+        return item;
+    }
+
+    /// <summary>
+    /// Changes the stock row and returns the new state. The default implementation loads the row, applies the domain rule
+    /// (stock never goes negative), stages the change and commits once through the unit of work.
+    /// </summary>
+    protected virtual async Task<StockItem> ApplyAdjustmentAsync(
+        Staff actor, Sku sku, int delta, string reason, CancellationToken cancellationToken)
+    {
+        var item = await stock.GetByIdAsync(StockItem.KeyFor(actor.HomeBranch, sku), cancellationToken);
+
+        if (item is null)
         {
-            var item = await stock.GetByIdAsync(StockItem.KeyFor(actor.HomeBranch, sku), cancellationToken);
+            if (delta < 0)
+                throw new InsufficientStockException(sku, 0, -delta);
 
-            if (item is null)
-            {
-                if (delta < 0)
-                    throw new InsufficientStockException(sku, 0, -delta);
-
-                item = new StockItem(actor.HomeBranch, sku, delta);
-                await stock.AddAsync(item, cancellationToken);
-            }
+            item = new StockItem(actor.HomeBranch, sku, delta);
+            await stock.AddAsync(item, cancellationToken);
+        }
+        else
+        {
+            if (delta > 0)
+                item.Add(delta);
             else
-            {
-                if (delta > 0)
-                    item.Add(delta);
-                else
-                    item.Remove(-delta);
+                item.Remove(-delta);
 
-                await stock.UpdateAsync(item, cancellationToken);
-            }
-
-            if (item.Quantity <= stockSettings.LowStockThreshold)
-                events.Publish(new StockLowEvent(
-                    item.BranchCode, item.Sku, item.Quantity, stockSettings.LowStockThreshold, clock.UtcNow));
-
-            return item;
+            await stock.UpdateAsync(item, cancellationToken);
         }
-        finally
-        {
-            gate.Release();
-        }
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return item;
     }
 }

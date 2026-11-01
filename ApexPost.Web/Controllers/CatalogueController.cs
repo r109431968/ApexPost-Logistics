@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ApexPost.Web.Controllers;
 
-public sealed class CatalogueController(ICatalogueService catalogue) : ApexController
+public sealed class CatalogueController(ICatalogueService catalogue, IPriceRevisionService priceRevision) : ApexController
 {
     [BranchScoped]
     public async Task<IActionResult> Index(
@@ -19,7 +19,8 @@ public sealed class CatalogueController(ICatalogueService catalogue) : ApexContr
             Rows = rows,
             Category = category,
             Search = search,
-            CanAdjust = User.ApexRole == StaffRole.BranchManager && code == HomeBranch
+            CanAdjust = User.ApexRole == StaffRole.BranchManager && code == HomeBranch,
+            CanRevisePrices = User.ApexRole == StaffRole.Administrator
         });
     }
 
@@ -37,6 +38,23 @@ public sealed class CatalogueController(ICatalogueService catalogue) : ApexContr
         AuditNotes.Add(HttpContext, "newQuantity", item.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
         Success($"Stock for {item.Sku} is now {item.Quantity}.");
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [Authorize(Policy = AuthPolicies.AdministratorOnly)]
+    [Audit("PriceRevision")]
+    [OnInvalidModel(nameof(Index))]
+    public async Task<IActionResult> RevisePrices(PriceRevisionViewModel model, CancellationToken cancellationToken)
+    {
+        var category = model.Category!.Value;
+        var changed = await priceRevision.ReviseCategoryAsync(category, model.Percent, cancellationToken);
+
+        AuditNotes.Add(HttpContext, "category", category.ToString());
+        AuditNotes.Add(HttpContext, "percent", model.Percent.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        AuditNotes.Add(HttpContext, "products", changed.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        Success($"{changed} prices in {category} changed by {model.Percent}%.");
         return RedirectToAction(nameof(Index));
     }
 }

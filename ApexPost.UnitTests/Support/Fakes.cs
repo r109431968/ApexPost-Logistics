@@ -70,3 +70,18 @@ public sealed class RepositoryZoneCatalog(IRepository<ShippingZone, string> repo
     {
     }
 }
+
+/// <summary>A unit of work that only counts commits, so tests can check "one commit per use case".</summary>
+public sealed class SpyUnitOfWork : IUnitOfWork
+{
+    public int SaveCount { get; private set; }
+
+    public Task<int> SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        SaveCount++;
+        return Task.FromResult(0);
+    }
+
+    public Task ExecuteInTransactionAsync(Func<CancellationToken, Task> work, CancellationToken cancellationToken) =>
+        work(cancellationToken);
+}

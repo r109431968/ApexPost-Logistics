@@ -5,145 +5,15 @@ using ApexPost.Application.Settings;
 using ApexPost.Domain.Entities;
 using ApexPost.Domain.Enums;
 using ApexPost.Domain.ValueObjects;
-using ApexPost.Infrastructure.Auditing;
 using ApexPost.Infrastructure.Caching;
-using ApexPost.Infrastructure.Persistence.Json;
-using ApexPost.Infrastructure.Persistence.Json.Mapping;
-using ApexPost.Infrastructure.Persistence.Json.Records;
 using ApexPost.Infrastructure.Shipping;
 using ApexPost.UnitTests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ApexPost.UnitTests.Infrastructure;
 
-public sealed class TempFolder : IDisposable
-{
-    public string Path { get; } = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "apexpost-tests-" + Guid.NewGuid().ToString("N"));
-
-    public TempFolder() => Directory.CreateDirectory(Path);
-
-    public string File(string name) => System.IO.Path.Combine(Path, name);
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(Path, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
-}
-
-public class JsonPersistenceTests
-{
-    private static JsonRepository<Product, Sku, ProductRecord> Open(string path) => new(path, new ProductMapper());
-
-    private static Product Pen(decimal price = 2.5m) =>
-        new(new Sku("STA-0001"), "Gel pen", ProductCategory.Stationery, new Money(price), TaxCategory.Standard);
-
-    [Fact]
-    public async Task Data_written_by_one_repository_is_read_by_a_new_one_so_it_survives_a_restart()
-    {
-        using var folder = new TempFolder();
-        var path = folder.File("products.json");
-
-        await Open(path).AddAsync(Pen(), default);
-
-        var afterRestart = await Open(path).GetByIdAsync(new Sku("STA-0001"), default);
-
-        Assert.NotNull(afterRestart);
-        Assert.Equal("Gel pen", afterRestart.Name);
-        Assert.Equal(2.5m, afterRestart.UnitPrice.Amount);
-    }
-
-    [Fact]
-    public async Task Update_and_delete_are_persisted_and_missing_keys_are_reported()
-    {
-        using var folder = new TempFolder();
-        var path = folder.File("products.json");
-        var repository = Open(path);
-        await repository.AddAsync(Pen(), default);
-
-        var changed = Pen();
-        changed.ChangePrice(new Money(3m));
-        await repository.UpdateAsync(changed, default);
-        Assert.Equal(3m, (await Open(path).GetByIdAsync(changed.Id, default))!.UnitPrice.Amount);
-
-        await repository.DeleteAsync(changed.Id, default);
-        Assert.Null(await Open(path).GetByIdAsync(changed.Id, default));
-        await Assert.ThrowsAsync<NotFoundException>(() => repository.DeleteAsync(changed.Id, default));
-    }
-
-    [Fact]
-    public async Task Adding_the_same_key_twice_is_rejected()
-    {
-        using var folder = new TempFolder();
-        var repository = Open(folder.File("products.json"));
-        await repository.AddAsync(Pen(), default);
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() => repository.AddAsync(Pen(), default));
-    }
-
-    [Fact]
-    public async Task A_cancelled_write_leaves_no_half_written_file_behind()
-    {
-        using var folder = new TempFolder();
-        var path = folder.File("products.json");
-        using var cancelled = new CancellationTokenSource();
-        await cancelled.CancelAsync();
-
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Open(path).AddAsync(Pen(), cancelled.Token));
-
-        Assert.False(File.Exists(path + ".tmp"));
-    }
-
-    [Fact]
-    public async Task Many_parallel_writers_do_not_lose_updates()
-    {
-        using var folder = new TempFolder();
-        var repository = new JsonRepository<StockItem, string, StockRecord>(folder.File("stock.json"), new StockMapper());
-        var branch = new BranchCode("BR001");
-
-        await Task.WhenAll(Enumerable.Range(1, 25).Select(number =>
-            repository.AddAsync(new StockItem(branch, new Sku($"PKG-{number:D4}"), number), default)));
-
-        Assert.Equal(25, (await repository.ListAsync(default)).Count);
-    }
-}
-
 public class AuditStoreTests
 {
-    private static AuditEntry Entry(string action) => new()
-    {
-        Id = Guid.NewGuid(),
-        Timestamp = DateTimeOffset.UtcNow,
-        Controller = "Transactions",
-        Action = action,
-        Operation = action,
-        StatusCode = 302,
-        DurationMs = 12,
-        CorrelationId = "corr-1"
-    };
-
-    [Fact]
-    public async Task Entries_are_appended_one_per_line_and_read_back_newest_first()
-    {
-        using var folder = new TempFolder();
-        var path = folder.File("audit.jsonl");
-        var store = new JsonLinesAuditStore(path);
-
-        await store.AppendAsync(Entry("First"), default);
-        await store.AppendAsync(Entry("Second"), default);
-        await store.AppendAsync(Entry("Third"), default);
-
-        Assert.Equal(3, (await File.ReadAllLinesAsync(path)).Length);
-
-        var recent = await store.ReadRecentAsync(2, default);
-        Assert.Equal(new[] { "Third", "Second" }, recent.Select(e => e.Action).ToArray());
-    }
-
     [Fact]
     public void The_audit_entry_has_no_field_that_could_hold_a_secret()
     {

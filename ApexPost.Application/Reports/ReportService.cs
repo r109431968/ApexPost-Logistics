@@ -24,7 +24,12 @@ public interface IReportService
     Task<BranchDashboard> DashboardAsync(BranchCode branch, CancellationToken cancellationToken);
 }
 
-public sealed class ReportService(
+/// <summary>
+/// Report use cases computed in memory from the repositories. The web application uses a subclass that runs the daily
+/// sales and low-stock reports as SQL Server stored procedures; this class stays the reference implementation, and the
+/// integration tests check that the stored procedures give the same answers.
+/// </summary>
+public class ReportService(
     IRepository<CounterTransaction, Guid> transactionRepo,
     IRepository<StockItem, string> stockRepo,
     IRepository<Product, Sku> productRepo,
@@ -33,7 +38,7 @@ public sealed class ReportService(
     IClock clock) : IReportService
 {
     /// <summary>Sales count only Paid transactions. Services = shipping plus money order fees (not the order amount).</summary>
-    public async Task<DailySalesReport> DailySalesAsync(
+    public virtual async Task<DailySalesReport> DailySalesAsync(
         BranchCode branch, DateOnly day, CancellationToken cancellationToken)
     {
         var paid = await transactionRepo.ListAsync(TransactionSpecs.PaidOnDay(branch, day), cancellationToken);
@@ -63,7 +68,7 @@ public sealed class ReportService(
         return new DailySalesReport(branch, day, paid.Count, retail, services);
     }
 
-    public async Task<IReadOnlyList<LowStockItem>> LowStockAsync(
+    public virtual async Task<IReadOnlyList<LowStockItem>> LowStockAsync(
         BranchCode branch, int? threshold, CancellationToken cancellationToken)
     {
         var limit = threshold ?? stockSettings.LowStockThreshold;
@@ -117,18 +122,19 @@ public sealed class ReportService(
             .ToList();
     }
 
-    /// <summary>The three pieces are independent, so they run in parallel with Task.WhenAll.</summary>
+    /// <summary>
+    /// The three pieces run one after another. They share the request's DbContext, and a DbContext allows only one
+    /// operation at a time, so Task.WhenAll would throw.
+    /// </summary>
     public async Task<BranchDashboard> DashboardAsync(BranchCode branch, CancellationToken cancellationToken)
     {
         var today = TransactionSpecs.DayOf(clock.UtcNow);
 
-        var salesTask = DailySalesAsync(branch, today, cancellationToken);
-        var stockTask = LowStockAsync(branch, null, cancellationToken);
-        var alertsTask = AlertsAsync(branch, today, cancellationToken);
+        var sales = await DailySalesAsync(branch, today, cancellationToken);
+        var stock = await LowStockAsync(branch, null, cancellationToken);
+        var alerts = await AlertsAsync(branch, today, cancellationToken);
 
-        await Task.WhenAll(salesTask, stockTask, alertsTask);
-
-        return new BranchDashboard(branch, today, await salesTask, await stockTask, await alertsTask);
+        return new BranchDashboard(branch, today, sales, stock, alerts);
     }
 
     private async Task<IReadOnlyList<DashboardAlert>> AlertsAsync(

@@ -4,30 +4,33 @@ using ApexPost.Application.Settings;
 using ApexPost.Application.Validation;
 using ApexPost.Domain.Rules;
 using ApexPost.Infrastructure;
-using ApexPost.Infrastructure.Auditing;
 using ApexPost.Infrastructure.Caching;
 using ApexPost.Infrastructure.Notifications;
-using ApexPost.Infrastructure.Persistence.Json;
-using ApexPost.Infrastructure.Persistence.Json.Mapping;
-using ApexPost.Infrastructure.Persistence.Json.Records;
-using ApexPost.Infrastructure.Security;
+using ApexPost.Infrastructure.Persistence.Sql;
+using ApexPost.Infrastructure.Persistence.Sql.Procedures;
+using ApexPost.Infrastructure.Persistence.Sql.Reporting;
+using ApexPost.Infrastructure.Persistence.Sql.Repositories;
+using ApexPost.Infrastructure.Persistence.Sql.Stores;
 using ApexPost.Infrastructure.Seeding;
 using ApexPost.Infrastructure.Shipping;
 using ApexPost.Infrastructure.Verification;
+using Microsoft.EntityFrameworkCore;
 
 namespace ApexPost.Web.Composition;
 
 /// <summary>
 /// Registers the domain, application and infrastructure services.
-/// Lifetimes: repositories, catalogues, events, the audit store and the notification sink are singletons
-/// (they hold caches or locks and are thread safe). Use cases are scoped. Settings are read lazily from
-/// IConfiguration, so tests can override configuration before the first request.
+/// Lifetimes: the DbContext, the repositories, the unit of work and the use cases are scoped (one per request, and
+/// they all share the same DbContext). Catalogue caches, events, the notification sink and the audit store are
+/// singletons: they hold caches or locks, or they open their own short-lived DbContext. Settings are read lazily
+/// from IConfiguration, so tests can override configuration before the first request.
 /// </summary>
 public static class ServiceRegistration
 {
+    public const string ConnectionName = "ApexPostDb";
+
     public static IServiceCollection AddApexPost(this IServiceCollection services)
     {
-        services.AddSettings<JsonStorageSettings>(JsonStorageSettings.SectionName);
         services.AddSettings<ShippingSettings>(ShippingSettings.SectionName);
         services.AddSettings<TaxSettings>(TaxSettings.SectionName);
         services.AddSettings<MoneyOrderSettings>(MoneyOrderSettings.SectionName);
@@ -40,25 +43,46 @@ public static class ServiceRegistration
         services.AddSingleton(sp => sp.GetRequiredService<ShippingSettings>().CreateWeightLimitRule());
         services.AddSingleton<IClock, SystemClock>();
 
-        services.AddSingleton<IRepository<Branch, BranchCode>>(sp =>
-            new JsonRepository<Branch, BranchCode, BranchRecord>(DataFile(sp, "branches.json"), new BranchMapper()));
-        services.AddSingleton<IRepository<Staff, Guid>>(sp =>
-            new JsonRepository<Staff, Guid, StaffRecord>(DataFile(sp, "staff.json"), new StaffMapper()));
-        services.AddSingleton<IRepository<Product, Sku>>(sp =>
-            new JsonRepository<Product, Sku, ProductRecord>(DataFile(sp, "products.json"), new ProductMapper()));
-        services.AddSingleton<IRepository<StockItem, string>>(sp =>
-            new JsonRepository<StockItem, string, StockRecord>(DataFile(sp, "stock.json"), new StockMapper()));
-        services.AddSingleton<IRepository<ShippingZone, string>>(sp =>
-            new JsonRepository<ShippingZone, string, ZoneRecord>(DataFile(sp, "zones.json"), new ZoneMapper()));
-        services.AddSingleton<IRepository<CounterTransaction, Guid>>(sp =>
-            new JsonRepository<CounterTransaction, Guid, TransactionRecord>(
-                DataFile(sp, "transactions.json"), new TransactionMapper()));
+        // SQL Server. The connection string comes from user-secrets (Development) or the environment, never from source control.
+        services.AddDbContextFactory<ApexPostDbContext>((sp, options) =>
+        {
+            var connectionString = sp.GetRequiredService<IConfiguration>().GetConnectionString(ConnectionName)
+                ?? throw new InvalidOperationException(
+                    $"The connection string '{ConnectionName}' is missing. Set it with dotnet user-secrets (see README).");
 
-        services.AddSingleton<ICredentialStore>(sp => new JsonCredentialStore(DataFile(sp, "credentials.json")));
-        services.AddSingleton<IAuditStore>(sp => new JsonLinesAuditStore(DataFile(sp, "audit.jsonl")));
+            options.UseSqlServer(connectionString);
+        });
+        services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<ApexPostDbContext>>().CreateDbContext());
 
-        services.AddSingleton<IProductCatalog, ProductCatalog>();
-        services.AddSingleton<IZoneCatalog, ZoneCatalog>();
+        // One DbContext per request is shared by every repository and the unit of work.
+        // The generic interfaces point at the same scoped instance as the specific ones.
+        services.AddScoped<IBranchRepository, BranchRepository>();
+        services.AddScoped<IRepository<Branch, BranchCode>>(sp => sp.GetRequiredService<IBranchRepository>());
+        services.AddScoped<IStaffRepository, StaffRepository>();
+        services.AddScoped<IRepository<Staff, Guid>>(sp => sp.GetRequiredService<IStaffRepository>());
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IRepository<Product, Sku>>(sp => sp.GetRequiredService<IProductRepository>());
+        services.AddScoped<IZoneRepository, ZoneRepository>();
+        services.AddScoped<IRepository<ShippingZone, string>>(sp => sp.GetRequiredService<IZoneRepository>());
+        services.AddScoped<IStockRepository, StockRepository>();
+        services.AddScoped<IRepository<StockItem, string>>(sp => sp.GetRequiredService<IStockRepository>());
+        services.AddScoped<ICounterTransactionRepository, CounterTransactionRepository>();
+        services.AddScoped<IRepository<CounterTransaction, Guid>>(sp => sp.GetRequiredService<ICounterTransactionRepository>());
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IProductPriceWriter, ProductPriceWriter>();
+
+        services.AddScoped<ICredentialStore, SqlCredentialStore>();
+        services.AddSingleton<IAuditStore, SqlAuditStore>();
+
+        services.AddSingleton<IProductCatalog>(sp => new ProductCatalog(
+            new ScopedReadRepository<Product, Sku>(sp.GetRequiredService<IServiceScopeFactory>()),
+            sp.GetRequiredService<IClock>(),
+            sp.GetRequiredService<CatalogCacheSettings>()));
+        services.AddSingleton<IZoneCatalog>(sp => new ZoneCatalog(
+            new ScopedReadRepository<ShippingZone, string>(sp.GetRequiredService<IServiceScopeFactory>()),
+            sp.GetRequiredService<IClock>(),
+            sp.GetRequiredService<CatalogCacheSettings>()));
+
         services.AddSingleton<INotificationSink, InMemoryNotificationSink>();
         services.AddSingleton<ICourierTrackingService, SimulatedCourierTrackingService>();
         services.AddSingleton<IIdentityVerificationService>(_ => new SimulatedIdentityVerificationService());
@@ -75,9 +99,11 @@ public static class ServiceRegistration
         services.AddScoped<ILoginService, LoginService>();
         services.AddScoped<IStaffService, StaffService>();
         services.AddScoped<IBranchService, BranchService>();
-        services.AddScoped<ICatalogueService, CatalogueService>();
+        // The web application uses the stored-procedure versions of the catalogue and report services.
+        services.AddScoped<ICatalogueService, SqlCatalogueService>();
+        services.AddScoped<IPriceRevisionService, PriceRevisionService>();
         services.AddScoped<ITransactionQueries, TransactionQueries>();
-        services.AddScoped<IReportService, ReportService>();
+        services.AddScoped<IReportService, SqlReportService>();
 
         services.AddTransient<DemoDataSeeder>();
         services.AddTransient<CredentialSeeder>();
@@ -88,6 +114,20 @@ public static class ServiceRegistration
     /// <summary>Connects the observer (event subscriber) once at start-up.</summary>
     public static void AttachEventSubscribers(this IServiceProvider services) =>
         services.GetRequiredService<NotificationSubscriber>().Attach();
+
+    /// <summary>
+    /// Applies pending migrations when Database:ApplyMigrationsOnStartup is true (Development and tests).
+    /// It runs the migrations, it never calls EnsureCreated. Production deployments use the idempotent script.
+    /// </summary>
+    public static async Task MigrateDatabaseAsync(this WebApplication app)
+    {
+        if (!app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
+            return;
+
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApexPostDbContext>();
+        await db.Database.MigrateAsync(app.Lifetime.ApplicationStopping);
+    }
 
     public static async Task SeedDemoDataAsync(this WebApplication app)
     {
@@ -101,16 +141,4 @@ public static class ServiceRegistration
     private static IServiceCollection AddSettings<T>(this IServiceCollection services, string section)
         where T : class, new() =>
         services.AddSingleton(sp => sp.GetRequiredService<IConfiguration>().GetSection(section).Get<T>() ?? new T());
-
-    private static string DataFile(IServiceProvider services, string fileName)
-    {
-        var storage = services.GetRequiredService<JsonStorageSettings>();
-        var environment = services.GetRequiredService<IHostEnvironment>();
-
-        var directory = Path.IsPathRooted(storage.DataDirectory)
-            ? storage.DataDirectory
-            : Path.Combine(environment.ContentRootPath, storage.DataDirectory);
-
-        return Path.Combine(directory, fileName);
-    }
 }

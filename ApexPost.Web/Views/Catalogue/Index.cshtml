@@ -45,3 +45,22 @@
         </form>
     </section>
 }
+
+@if (Model.CanRevisePrices)
+{
+    <section class="card">
+        <h2>Revise prices (administrator)</h2>
+        <form method="post" asp-controller="Catalogue" asp-action="RevisePrices" class="inline">
+            <label>Category
+                <select name="Category" required>
+                    @foreach (var value in Enum.GetValues<ProductCategory>())
+                    {
+                        <option value="@value">@value</option>
+                    }
+                </select>
+            </label>
+            <label>Change in % (e.g. 10 or -5) <input name="Percent" type="number" step="0.1" min="-100" max="100" value="0" required /></label>
+            <button type="submit" class="primary">Apply</button>
+        </form>
+    </section>
+}

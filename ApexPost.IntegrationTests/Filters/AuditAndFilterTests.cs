@@ -1,6 +1,9 @@
 using System.Net;
 using System.Text.Json;
+using ApexPost.Application.Abstractions;
 using ApexPost.IntegrationTests.Support;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ApexPost.IntegrationTests.Filters;
 
@@ -10,17 +13,19 @@ public class AuditAndFilterTests : IClassFixture<ApexFactory>
 
     public AuditAndFilterTests(ApexFactory factory) => _factory = factory;
 
+    /// <summary>Reads the audit entries from the AuditEntries table (through the application's own audit store).</summary>
     private static async Task<List<JsonElement>> ReadAuditAsync(ApexFactory factory)
     {
-        var path = Path.Combine(factory.DataDirectory, "audit.jsonl");
-        if (!File.Exists(path))
-            return [];
+        var store = factory.Services.GetRequiredService<IAuditStore>();
+        var entries = await store.ReadRecentAsync(1000, default);
 
-        var lines = await File.ReadAllLinesAsync(path);
-        return lines.Where(line => !string.IsNullOrWhiteSpace(line))
-            .Select(line => JsonDocument.Parse(line).RootElement.Clone())
+        return entries
+            .Select(entry => JsonSerializer.SerializeToElement(entry, new JsonSerializerOptions(JsonSerializerDefaults.Web)))
             .ToList();
     }
+
+    private static async Task<string> ReadAuditTextAsync(ApexFactory factory) =>
+        string.Join('\n', (await ReadAuditAsync(factory)).Select(entry => entry.GetRawText()));
 
     [Fact]
     public async Task Opening_a_transaction_writes_an_audit_entry_with_user_branch_and_correlation_id()
@@ -64,10 +69,8 @@ public class AuditAndFilterTests : IClassFixture<ApexFactory>
 
         var audit = await ReadAuditAsync(_factory);
         var logins = audit.Where(e => e.GetProperty("operation").GetString() == "Login").ToList();
-        var raw = await File.ReadAllTextAsync(Path.Combine(_factory.DataDirectory, "audit.jsonl"));
+        var raw = await ReadAuditTextAsync(_factory);
 
-        //Assert.Contains(logins, e => e.GetProperty("details").GetProperty("outcome").GetString() == "success");
-        //Assert.Contains(logins, e => e.GetProperty("details").GetProperty("outcome").GetString() == "failed");
         Assert.Contains(logins, e => HasOutcome(e, "success"));
         Assert.Contains(logins, e => HasOutcome(e, "failed"));
         Assert.DoesNotContain(ApexFactory.DemoPassword, raw);
@@ -91,14 +94,21 @@ public class AuditAndFilterTests : IClassFixture<ApexFactory>
         });
         var page = await client.GetStringAsync(details);
 
-        var raw = await File.ReadAllTextAsync(Path.Combine(_factory.DataDirectory, "audit.jsonl"));
-        var stored = await File.ReadAllTextAsync(Path.Combine(_factory.DataDirectory, "transactions.json"));
+        var raw = await ReadAuditTextAsync(_factory);
+
+        // What is stored in the database: only the masked value, never the full number.
+        await using var db = _factory.CreateDbContext();
+        var storedMasks = await db.Database
+            .SqlQuery<string>($"SELECT MaskedNumber AS Value FROM IdentityVerifications")
+            .ToListAsync();
+        var stored = string.Join('\n', storedMasks);
 
         Assert.Contains("IdentityVerification", raw);
         Assert.DoesNotContain("P1234567", raw);
         Assert.DoesNotContain("P1234567", stored);
         Assert.DoesNotContain("P1234567", page);
         Assert.Contains("****4567", page);
+        Assert.Contains("****4567", storedMasks);
     }
 
     [Fact]

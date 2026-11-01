@@ -1,5 +1,8 @@
 using System.Net;
 using System.Text.RegularExpressions;
+using ApexPost.Infrastructure.Persistence.Sql;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -10,8 +13,11 @@ using Microsoft.Extensions.DependencyInjection;
 namespace ApexPost.IntegrationTests.Support;
 
 /// <summary>
-/// Starts the real application in memory with its own empty data folder, fast password hashing and test settings.
-/// Nothing is mocked: the real middleware pipeline, filters, services and JSON files run.
+/// Starts the real application in memory against its OWN disposable SQL Server database (ApexPostDb_Test_&lt;guid&gt;),
+/// with fast password hashing and test settings. The database is created by the real migrations, filled by the real
+/// seeder, and dropped when the factory is disposed. Nothing is mocked: the real middleware pipeline, filters,
+/// services, EF Core and SQL Server run. The server is LocalDB with Windows authentication (no password anywhere);
+/// set the environment variable APEXPOST_TEST_SERVER to use another server with Windows authentication.
 /// </summary>
 public sealed class ApexFactory : WebApplicationFactory<Program>
 {
@@ -33,8 +39,18 @@ public sealed class ApexFactory : WebApplicationFactory<Program>
         _overrides = overrides ?? new Dictionary<string, string?>();
     }
 
-    public string DataDirectory { get; } =
-        Path.Combine(Path.GetTempPath(), "apexpost-it-" + Guid.NewGuid().ToString("N"));
+    private static string SqlServerName =>
+       Environment.GetEnvironmentVariable("APEXPOST_TEST_SERVER") ?? @"(localdb)\MSSQLLocalDB";
+
+    /// <summary>A new database name per factory, so test classes never share or disturb each other's data.</summary>
+    public string DatabaseName { get; } = "ApexPostDb_Test_" + Guid.NewGuid().ToString("N");
+
+    public string ConnectionString =>
+        $"Server={SqlServerName};Database={DatabaseName};Trusted_Connection=True;TrustServerCertificate=True";
+
+    /// <summary>Opens a new DbContext on the test database (for assertions that look inside the database).</summary>
+    public ApexPostDbContext CreateDbContext() =>
+        Services.GetRequiredService<IDbContextFactory<ApexPostDbContext>>().CreateDbContext();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -44,7 +60,11 @@ public sealed class ApexFactory : WebApplicationFactory<Program>
         {
             var settings = new Dictionary<string, string?>
             {
-                ["Storage:DataDirectory"] = DataDirectory,
+                ["ConnectionStrings:ApexPostDb"] = ConnectionString,
+                ["Database:ApplyMigrationsOnStartup"] = "true",
+                ["Seed:Enabled"] = "true",
+                // 40 transactions are enough for the app tests. The volume test starts its own factory with more.
+                ["Seed:TransactionCount"] = "40",
                 ["Seed:DemoPassword"] = DemoPassword,
                 ["Passwords:Iterations"] = "1000",
                 ["Integration:ApiKeys:TestPartner"] = ApiKey,
@@ -89,13 +109,32 @@ public sealed class ApexFactory : WebApplicationFactory<Program>
         if (!disposing)
             return;
 
+        DropDatabase();
+    }
+
+    private void DropDatabase()
+    {
         try
         {
-            if (Directory.Exists(DataDirectory))
-                Directory.Delete(DataDirectory, recursive: true);
+            SqlConnection.ClearAllPools();
+
+            using var connection = new SqlConnection(
+                $"Server={SqlServerName};Database=master;Trusted_Connection=True;TrustServerCertificate=True");
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            // The name is generated in this class (ApexPostDb_Test_ + hex digits), never typed by a user.
+            command.CommandText = $@"
+                IF DB_ID(N'{DatabaseName}') IS NOT NULL
+                BEGIN
+                    ALTER DATABASE [{DatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                    DROP DATABASE [{DatabaseName}];
+                END";
+            command.ExecuteNonQuery();
         }
-        catch (IOException)
+        catch (SqlException)
         {
+            // Cleanup is best effort. A leftover ApexPostDb_Test_* database can be dropped by hand in SSMS.
         }
     }
 }

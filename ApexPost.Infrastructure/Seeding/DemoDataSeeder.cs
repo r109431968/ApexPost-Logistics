@@ -25,12 +25,16 @@ public sealed class DemoDataSeeder(
     WeightLimitRule weightRule,
     MoneyOrderSettings moneyOrderSettings,
     IClock clock,
+    IUnitOfWork unitOfWork,
     ILogger<DemoDataSeeder> logger)
 {
     private const int RandomSeed = 20261025;
-    private const int TransactionCount = 48;
-    private const int OpenBasketIndex = 47;
+    private const int MinimumTransactionCount = 32;
     private const int FailedVerificationIndex = 13;
+
+    /// <summary>The last transaction is left as an open basket, so the demo shows an unpaid sale.</summary>
+    private int TransactionCount => Math.Max(settings.TransactionCount, MinimumTransactionCount);
+    private int OpenBasketIndex => TransactionCount - 1;
 
     private const TaxCategory Std = TaxCategory.Standard;
     private const TaxCategory Red = TaxCategory.Reduced;
@@ -155,6 +159,9 @@ public sealed class DemoDataSeeder(
 
         // Branches go last: if the seed is interrupted, the next start sees no branches and runs it again.
         await SaveAsync(branchRepo, branchList, cancellationToken);
+
+        // One commit for everything. A seed that fails half way leaves nothing behind, so the next start runs it again.
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
             "Seeded {Branches} branches, {Staff} staff, {Products} products, {Zones} zones, {Stock} stock rows and {Transactions} transactions.",
@@ -466,16 +473,12 @@ public sealed class DemoDataSeeder(
     }
 
     private static async Task SaveAsync<T, TId>(
-        IRepository<T, TId> repository, IEnumerable<T> items, CancellationToken cancellationToken)
-        where T : Entity<TId>
-        where TId : notnull
+    IRepository<T, TId> repository, IEnumerable<T> items, CancellationToken cancellationToken)
+    where T : Entity<TId>
+    where TId : notnull
     {
+        // The database is empty here (SeedIfEmptyAsync checked), so every item is new. This only stages them.
         foreach (var item in items)
-        {
-            if (await repository.GetByIdAsync(item.Id, cancellationToken) is null)
-                await repository.AddAsync(item, cancellationToken);
-            else
-                await repository.UpdateAsync(item, cancellationToken);
-        }
+            await repository.AddAsync(item, cancellationToken);
     }
 }

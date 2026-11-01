@@ -1,17 +1,19 @@
+using ApexPost.Infrastructure.Persistence.Sql;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace ApexPost.Web.Health;
 
-/// <summary>Healthy when the branch data file can be read.</summary>
-public sealed class DataStoreHealthCheck(IRepository<Branch, BranchCode> branches) : IHealthCheck
+/// <summary>Healthy when SQL Server answers and the branch table can be read.</summary>
+public sealed class DataStoreHealthCheck(ApexPostDbContext db) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         try
         {
-            var all = await branches.ListAsync(cancellationToken);
-            return HealthCheckResult.Healthy($"{all.Count} branches readable.");
+            var count = await db.Branches.CountAsync(cancellationToken);
+            return HealthCheckResult.Healthy($"{count} branches readable.");
         }
         catch (OperationCanceledException)
         {
