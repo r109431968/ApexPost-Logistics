@@ -21,6 +21,9 @@ public sealed class CounterTransactionConfiguration : IEntityTypeConfiguration<C
         builder.HasOne<BranchEntity>().WithMany().HasForeignKey(x => x.BranchCode).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<CounterEntity>().WithMany().HasForeignKey(x => x.CounterId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<StaffEntity>().WithMany().HasForeignKey(x => x.ClerkId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(x => new { x.BranchCode, x.OpenedAtUtc }).IsDescending(false, true).IncludeProperties(x => new { x.Status, x.TaxTotal });
+        builder.HasIndex(x => new { x.BranchCode, x.Status, x.OpenedAtUtc }).IncludeProperties(x => x.TaxTotal);
     }
 }
 
@@ -35,17 +38,16 @@ public sealed class TransactionLineConfiguration : IEntityTypeConfiguration<Tran
             table.HasCheckConstraint("CK_TransactionLines_Price", "[UnitPrice] >= 0");
             table.HasCheckConstraint("CK_TransactionLines_Tax", "[TaxCategory] IN (1, 2, 3)");
             table.HasCheckConstraint("CK_TransactionLines_Number", "[LineNumber] > 0");
-            table.HasCheckConstraint(
-                "CK_TransactionLines_RetailFields",
-                "[LineType] <> 'Retail' OR ([Sku] IS NOT NULL AND [Description] IS NOT NULL)");
+            table.HasCheckConstraint("CK_TransactionLines_RetailFields","[LineType] <> 'Retail' OR ([Sku] IS NOT NULL AND [Description] IS NOT NULL)");
         });
         builder.HasKey(x => new { x.TransactionId, x.LineNumber });
         builder.Property(x => x.LineType).HasMaxLength(10).IsUnicode(false).IsRequired();
         builder.Property(x => x.Description).HasMaxLength(200);
 
-        builder.HasOne(x => x.Transaction).WithMany(x => x.Lines)
-            .HasForeignKey(x => x.TransactionId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.Transaction).WithMany(x => x.Lines).HasForeignKey(x => x.TransactionId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<ProductEntity>().WithMany().HasForeignKey(x => x.Sku).OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(x => new { x.LineType, x.Sku }).IncludeProperties(x => new { x.Quantity, x.UnitPrice });
     }
 }
 
@@ -63,8 +65,7 @@ public sealed class ShipmentConfiguration : IEntityTypeConfiguration<ShipmentEnt
         builder.Property(x => x.Weight).HasColumnName("WeightGrams");
         builder.Property(x => x.DestinationZone).HasMaxLength(10).IsUnicode(false).IsRequired();
 
-        builder.HasOne(x => x.Line).WithOne(x => x.Shipment)
-            .HasForeignKey<ShipmentEntity>(x => new { x.TransactionId, x.LineNumber }).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.Line).WithOne(x => x.Shipment).HasForeignKey<ShipmentEntity>(x => new { x.TransactionId, x.LineNumber }).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<ShippingZoneEntity>().WithMany().HasForeignKey(x => x.DestinationZone).OnDelete(DeleteBehavior.Restrict);
     }
 }
@@ -82,8 +83,7 @@ public sealed class MoneyOrderConfiguration : IEntityTypeConfiguration<MoneyOrde
         builder.Property(x => x.Sender).HasMaxLength(80).IsRequired();
         builder.Property(x => x.Recipient).HasMaxLength(80).IsRequired();
 
-        builder.HasOne(x => x.Line).WithOne(x => x.MoneyOrder)
-            .HasForeignKey<MoneyOrderEntity>(x => new { x.TransactionId, x.LineNumber }).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.Line).WithOne(x => x.MoneyOrder).HasForeignKey<MoneyOrderEntity>(x => new { x.TransactionId, x.LineNumber }).OnDelete(DeleteBehavior.Cascade);
     }
 }
 
@@ -98,8 +98,7 @@ public sealed class PaymentConfiguration : IEntityTypeConfiguration<PaymentEntit
         });
         builder.HasKey(x => x.TransactionId);
         builder.Property(x => x.TransactionId).ValueGeneratedNever();
-        builder.HasOne(x => x.Transaction).WithOne(x => x.Payment)
-            .HasForeignKey<PaymentEntity>(x => x.TransactionId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.Transaction).WithOne(x => x.Payment).HasForeignKey<PaymentEntity>(x => x.TransactionId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 
@@ -117,7 +116,6 @@ public sealed class IdentityVerificationConfiguration : IEntityTypeConfiguration
         builder.HasKey(x => x.TransactionId);
         builder.Property(x => x.TransactionId).ValueGeneratedNever();
         builder.Property(x => x.MaskedNumber).HasMaxLength(8).IsUnicode(false).IsRequired();
-        builder.HasOne(x => x.Transaction).WithOne(x => x.Verification)
-            .HasForeignKey<IdentityVerificationEntity>(x => x.TransactionId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.Transaction).WithOne(x => x.Verification).HasForeignKey<IdentityVerificationEntity>(x => x.TransactionId).OnDelete(DeleteBehavior.Cascade);
     }
 }

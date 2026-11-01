@@ -91,6 +91,9 @@ namespace ApexPost.Infrastructure.Persistence.Sql.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("TimestampUtc")
+                        .IsDescending();
+
                     b.ToTable("AuditEntries", (string)null);
                 });
 
@@ -258,11 +261,18 @@ namespace ApexPost.Infrastructure.Persistence.Sql.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchCode");
-
                     b.HasIndex("ClerkId");
 
                     b.HasIndex("CounterId");
+
+                    b.HasIndex("BranchCode", "OpenedAtUtc")
+                        .IsDescending(false, true);
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("BranchCode", "OpenedAtUtc"), new[] { "Status", "TaxTotal" });
+
+                    b.HasIndex("BranchCode", "Status", "OpenedAtUtc");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("BranchCode", "Status", "OpenedAtUtc"), new[] { "TaxTotal" });
 
                     b.ToTable("CounterTransactions", null, t =>
                         {
@@ -790,6 +800,10 @@ namespace ApexPost.Infrastructure.Persistence.Sql.Migrations
                     b.HasKey("TransactionId", "LineNumber");
 
                     b.HasIndex("Sku");
+
+                    b.HasIndex("LineType", "Sku");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("LineType", "Sku"), new[] { "Quantity", "UnitPrice" });
 
                     b.ToTable("TransactionLines", null, t =>
                         {

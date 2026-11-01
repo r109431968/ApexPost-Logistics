@@ -20,5 +20,6 @@ public sealed class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntr
         builder.Property(x => x.CorrelationId).HasMaxLength(64).IsUnicode(false).IsRequired();
         builder.Property(x => x.RouteValuesJson).IsRequired();
         builder.Property(x => x.DetailsJson).IsRequired();
+        builder.HasIndex(x => x.TimestampUtc).IsDescending();
     }
 }
