@@ -43,8 +43,8 @@ interfaces, and only the composition root (`Composition/ServiceRegistration.cs`)
   Queries go through query services (`ReportService`, `SqlReportService`, `CatalogueService`). **No separate read database is used**: reads and writes use the same SQL Server database
   (`ApexPostDb`), as the lab allows. The two daily reports (daily branch sales, low stock) and the stock adjustment run as stored procedures
   ([ADR-003](docs/adr/ADR-003-stored-procedures.md)). Shipping volume, the money-order audit and the dashboard alerts run as set-based, parameterised SQL
-  inside `SqlReportService` and return one row per group (or per money order), so no transaction with its lines is loaded for them. The transaction screens still load
-  domain aggregates; moving them to `AsNoTracking` projections is listed under known limitations (section 11).
+  inside `SqlReportService` and return one row per group (or per money order), so no transaction with its lines is loaded for them. The transaction list is a read model: `ICounterTransactionRepository.RecentSummariesAsync` returns one `TransactionListItem` row per
+  transaction (line count and total computed by the database). The transaction details screen loads the aggregate with `AsNoTracking` (`GetForViewAsync`), because it must show every line type.
 * **Concurrency.** `BranchStock` and `CounterTransactions` have a `rowversion` column. Two clerks selling the last item at the same moment:
   the second `SaveChanges` raises `DbUpdateConcurrencyException`, `UnitOfWork` translates it to `ConcurrencyConflictException`, and the web layer answers
   HTTP 409 ([ADR-006](docs/adr/ADR-006-concurrency-strategy.md)). A unique index violation becomes `DuplicateValueException` (409) in the same way.
@@ -347,5 +347,4 @@ Identity verification is a simulated service (`IIdentityVerificationService`). T
 * LocalDB is used for development and tests; a production SQL Server needs its own backup, login and role set-up (`sql/11_least_privilege.sql` is the starting point).
 * The base `ReportService` (the in-memory reference implementation used by the unit tests) still loads aggregates through `ListAsync(spec)` and filters in C#. The web application does not use it for any report: `SqlReportService`
   overrides all of them, and integration tests compare the SQL answers with the reference.
-* The transaction list and details screens still load domain aggregates (the details screen tracked). They are correct, but a list at the 200 000-row volume of `PERFORMANCE.md` would need an `AsNoTracking` projection
-  into a query DTO.
+* The transaction details screen still builds the domain aggregate (untracked) to show lines, shipments, money orders and the verification; a flat DTO per line type would be the next step. It reads one transaction, so it does not grow with the table.

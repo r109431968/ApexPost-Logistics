@@ -1,12 +1,13 @@
 using System.Net;
 using ApexPost.Application.Abstractions;
-using ApexPost.Application.Exceptions;
 using ApexPost.Application.DTOs;
+using ApexPost.Application.Exceptions;
 using ApexPost.Application.Reports;
 using ApexPost.Application.Settings;
 using ApexPost.Domain.Entities;
 using ApexPost.Domain.Enums;
 using ApexPost.Domain.ValueObjects;
+using ApexPost.Infrastructure.Persistence.Sql;
 using ApexPost.IntegrationTests.Support;
 using ApexPost.Web.Middleware;
 using Microsoft.AspNetCore.Hosting;
@@ -198,6 +199,36 @@ public class SqlPersistenceTests(ApexFactory factory, ITestOutputHelper output) 
         Assert.Contains("TOP(@", recent, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("WHERE", stock, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("ORDER BY", withLines, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task The_transaction_list_read_model_matches_the_domain_aggregates()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var repository = scope.ServiceProvider.GetRequiredService<ICounterTransactionRepository>();
+
+        var aggregates = await repository.RecentForBranchAsync(Br001, 25, default);
+        var list = await repository.RecentSummariesAsync(Br001, 25, default);
+
+        Assert.NotEmpty(list);
+        Assert.Equal(
+            aggregates.OrderBy(t => t.Id).Select(t => (t.Id, t.Status, t.Lines.Count, t.Total.Amount)).ToList(),
+            list.OrderBy(item => item.Id).Select(item => (item.Id, item.Status, item.LineCount, item.Total.Amount)).ToList());
+    }
+
+    [Fact]
+    public async Task The_details_screen_loads_a_transaction_without_tracking_it()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var repository = scope.ServiceProvider.GetRequiredService<ICounterTransactionRepository>();
+        var context = scope.ServiceProvider.GetRequiredService<ApexPostDbContext>();
+        var id = (await repository.RecentForBranchAsync(Br001, 1, default)).Single().Id;
+
+        var viewed = await repository.GetForViewAsync(id, default);
+
+        Assert.NotNull(viewed);
+        Assert.Equal(id, viewed.Id);
+        Assert.Empty(context.ChangeTracker.Entries());
     }
 
     // ---- Stored procedures -------------------------------------------------------------------------------------

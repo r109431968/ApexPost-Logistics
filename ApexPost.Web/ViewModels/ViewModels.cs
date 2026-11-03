@@ -75,7 +75,7 @@ public sealed class PriceRevisionViewModel
 public sealed class TransactionListViewModel
 {
     public required string BranchCode { get; init; }
-    public required IReadOnlyList<CounterTransaction> Transactions { get; init; }
+    public required IReadOnlyList<TransactionListItem> Transactions { get; init; }
 }
 
 public sealed class NewTransactionViewModel
