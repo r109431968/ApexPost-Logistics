@@ -39,9 +39,11 @@ interfaces, and only the composition root (`Composition/ServiceRegistration.cs`)
 * **Repositories stage, the unit of work commits.** `AddAsync`, `UpdateAsync` and `DeleteAsync` only change the tracked `DbContext`; the use case ends with
   exactly one `IUnitOfWork.SaveChangesAsync`. A sale (transaction, lines, payment, stock) is therefore one atomic commit
   ([ADR-004](docs/adr/ADR-004-repository-and-unit-of-work.md)). No repository returns `IQueryable`.
-* **Commands and queries are separated.** Commands (`CheckoutService`, `ReversalService`...) load domain aggregates and commit through the unit of work.
-  Reads for screens use `AsNoTracking`, projections and split queries. The two daily reports and the stock adjustment use stored procedures
-  ([ADR-003](docs/adr/ADR-003-stored-procedures.md)).
+* **Commands and queries are separated, in one database.** Commands (`CheckoutService`, `ReversalService`...) load domain aggregates and commit through the unit of work.
+  Queries go through query services (`ReportService`, `SqlReportService`, `CatalogueService`). **No separate read database is used**: reads and writes use the same SQL Server database
+  (`ApexPostDb`), as the lab allows. The two daily reports (daily branch sales, low stock) and the stock adjustment run as stored procedures
+  ([ADR-003](docs/adr/ADR-003-stored-procedures.md)). The other reads (shipping volume, money-order audit, dashboard alerts and the transaction screens) still load aggregates
+  through the repositories; moving them to `AsNoTracking` projections is listed under known limitations (section 11).
 * **Concurrency.** `BranchStock` and `CounterTransactions` have a `rowversion` column. Two clerks selling the last item at the same moment:
   the second `SaveChanges` raises `DbUpdateConcurrencyException`, `UnitOfWork` translates it to `ConcurrencyConflictException`, and the web layer answers
   HTTP 409 ([ADR-006](docs/adr/ADR-006-concurrency-strategy.md)). A unique index violation becomes `DuplicateValueException` (409) in the same way.
@@ -116,6 +118,28 @@ Delete behaviour: master data (branches, products, zones, staff) uses `Restrict`
 Lines, payment, shipment, money order and identity verification belong to their transaction and use `Cascade`
 ([ADR-001](docs/adr/ADR-001-schema-and-delete-behaviours.md)). Table checks protect the rules a second time: `Quantity >= 0`, `UnitPrice >= 0`,
 `Status IN (1,2,3,4)`, and `MaskedNumber LIKE '****____'` so a full document number can never be stored.
+
+### 2.3 Normalization note (3NF) and the anomalies the design prevents
+
+Every table has a primary key, and every non-key column depends on that key, the whole key and nothing but the key (third normal form):
+
+* `Branches` holds the branch name, region and opening hours. Every other table stores only `BranchCode`.
+* `Staff.RoleId` points to `Roles`; the role name is not repeated in `Staff`. `Products.CategoryId` points to `ProductCategories` in the same way.
+* Rates belong to the zone (`ShippingRates.ZoneCode`), and a `Shipment` stores only its `DestinationZone`, never a rate.
+* `TransactionLines` has the composite key `(TransactionId, LineNumber)`, and `MoneyOrders` and `Shipments` extend a line with the same key, so one line has at most one money order or shipment.
+
+Three anomalies this prevents:
+
+1. **Update anomaly.** If the region of a branch (or the name of a product, or a staff member's role name) were copied into every transaction, a change would have to be made in thousands of rows, and a missed row would give two different regions for one branch.
+   Here the value is stored once, so one `UPDATE` changes it everywhere, and the "top products per region" report always sees one region per branch.
+2. **Insertion anomaly.** A new branch, product or shipping zone can be created before it has any transaction, stock row or shipment, because master data lives in its own tables.
+   In a single wide "sales" table a product could not be recorded until it had been sold at least once.
+3. **Deletion anomaly.** Removing the last transaction of a branch (or the last sale of a product) does not remove the branch or product, because they are separate rows.
+   The delete rules go further: master data uses `Restrict`, so a branch, product or zone with history cannot be deleted by mistake, while a transaction's own lines, payment, shipment, money order and verification use `Cascade` and disappear together with it
+   ([ADR-001](docs/adr/ADR-001-schema-and-delete-behaviours.md)).
+
+**Deliberate copies (not anomalies).** `TransactionLines.UnitPrice` and `TaxCategory` copy the product's price and tax category at the moment of sale, and `CounterTransactions.TaxTotal` stores the tax that was charged.
+These are historical facts: if a product's price changes tomorrow, yesterday's receipt must not change. They are stored on purpose, not by accident.
 
 ## 3. Domain model
 
@@ -320,3 +344,5 @@ Identity verification is a simulated service (`IIdentityVerificationService`). T
 * The courier service and notifications are simulations.
 * Audit integrity depends on database permissions (see section 10).
 * LocalDB is used for development and tests; a production SQL Server needs its own backup, login and role set-up (`sql/11_least_privilege.sql` is the starting point).
+* Shipping volume, the money-order audit, the dashboard alerts and the transaction screens still load domain aggregates through `ListAsync(spec)` and filter in C#; they are correct, but they do not scale to the
+  200 000-row volume used in `PERFORMANCE.md`. The next step is `AsNoTracking` projections into DTOs or stored procedures, like the two daily reports.
