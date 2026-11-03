@@ -1,4 +1,7 @@
 <Solution>
+  <Project Path="ApexPost.Courier.Offline.Harness/ApexPost.Courier.Offline.Harness.csproj" />
+  <Project Path="ApexPost.Courier.Offline.Tests/ApexPost.Courier.Offline.Tests.csproj" />
+  <Project Path="ApexPost.Courier.Offline/ApexPost.Courier.Offline.csproj" />
   <Project Path="ApexPost.Domain/ApexPost.Domain.csproj" />
   <Project Path="ApexPost.Application/ApexPost.Application.csproj" />
   <Project Path="ApexPost.Infrastructure/ApexPost.Infrastructure.csproj" />
