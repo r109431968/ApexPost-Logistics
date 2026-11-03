@@ -38,7 +38,7 @@ All numbers are from the second run of each statement (warm cache, physical read
 
 Plans before and after (screenshots of the actual execution plans):
 
-![w1-before](docs/performance/w1-before.png)
+
 ![w1-after](docs/performance/w1-after.png)
 ![w2-before](docs/performance/w2-before.png)
 ![w2-after](docs/performance/w2-after.png)
@@ -81,10 +81,8 @@ Script 08, section "NON-SARGable", plus one extra variant (A2). All three return
 | Plan | Constant Scan + Nested Loops (a seek on a range that SQL Server derived itself), `sargable-a-after.png` | Index Seek on `BranchCode` only, then the functions are applied to every BR001 row as a residual filter, `sargable-a2-after.png` | Index Seek on `(BranchCode, OpenedAtUtc)` range, `sargable-b-after.png` |
 
 ![sargable-a-before](docs/performance/sargable-a-before.png)
-![sargable-a-after](docs/performance/sargable-a-after.png)
 ![sargable-a2-after](docs/performance/sargable-a2-after.png)
 ![sargable-b-before](docs/performance/sargable-b-before.png)
-![sargable-b-after](docs/performance/sargable-b-after.png)
 
 What this shows:
 
