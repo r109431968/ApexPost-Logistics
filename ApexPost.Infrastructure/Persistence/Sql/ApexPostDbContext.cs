@@ -32,7 +32,6 @@ public sealed class ApexPostDbContext(DbContextOptions<ApexPostDbContext> option
     public DbSet<PaymentEntity> Payments => Set<PaymentEntity>();
     public DbSet<IdentityVerificationEntity> IdentityVerifications => Set<IdentityVerificationEntity>();
     public DbSet<AuditEntryEntity> AuditEntries => Set<AuditEntryEntity>();
-    //public DbSet<SyncInboxEntity> SyncInbox => Set<SyncInboxEntity>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

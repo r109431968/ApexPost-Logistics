@@ -1,3 +1,4 @@
+/* Same text as the migration AdjustStockCreatesMissingRows. */
 CREATE OR ALTER PROCEDURE dbo.usp_AdjustStock
     @BranchCode    varchar(5),
     @Sku           varchar(8),
@@ -26,9 +27,14 @@ BEGIN
 
         IF @@ROWCOUNT = 0
         BEGIN
-            IF NOT EXISTS (SELECT 1 FROM dbo.BranchStock WHERE BranchCode = @BranchCode AND Sku = @Sku)
-                THROW 50012, 'This branch does not stock that item.', 1;
-            THROW 50013, 'The adjustment would take the stock below zero.', 1;
+            IF EXISTS (SELECT 1 FROM dbo.BranchStock WHERE BranchCode = @BranchCode AND Sku = @Sku)
+                THROW 50013, 'The adjustment would take the stock below zero.', 1;
+            IF @Delta < 0
+                THROW 50013, 'The adjustment would take the stock below zero.', 1;
+
+            -- First stock of this item at this branch (positive change only).
+            INSERT INTO dbo.BranchStock (BranchCode, Sku, Quantity, CreatedBy)
+            VALUES (@BranchCode, @Sku, @Delta, @ChangedBy);
         END;
 
         SELECT @QuantityAfter = Quantity
@@ -46,7 +52,7 @@ BEGIN
         THROW;                          -- re-raise the original error to the caller
     END CATCH;
 END;
-
+GO
 
 DECLARE @q int;
 EXEC dbo.usp_AdjustStock @BranchCode = 'BR001', @Sku = 'STA-0010', @Delta = 5,

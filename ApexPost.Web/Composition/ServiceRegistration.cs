@@ -50,7 +50,10 @@ public static class ServiceRegistration
                 ?? throw new InvalidOperationException(
                     $"The connection string '{ConnectionName}' is missing. Set it with dotnet user-secrets (see README).");
 
-            options.UseSqlServer(connectionString);
+            // EnableRetryOnFailure turns on the retrying execution strategy: transient errors (a deadlock victim, a dropped
+            // connection, a timeout while failing over) are retried up to 3 times. The only explicit transaction is inside
+            // UnitOfWork.ExecuteInTransactionAsync, which runs it through the strategy, so a retry repeats the whole unit.
+            options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure(maxRetryCount: 3));
         });
         services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<ApexPostDbContext>>().CreateDbContext());
 

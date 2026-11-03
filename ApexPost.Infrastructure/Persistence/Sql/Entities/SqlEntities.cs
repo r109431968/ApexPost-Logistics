@@ -179,13 +179,3 @@ public sealed class AuditEntryEntity
     public long DurationMs { get; set; }
     public string CorrelationId { get; set; } = null!;
 }
-
-public sealed class SyncInboxEntity
-{
-    public long Id { get; set; }
-    public string DeviceId { get; set; } = null!;
-    public string LocalTransactionId { get; set; } = null!;
-    public Guid? TransactionId { get; set; }
-    public DateTime ReceivedAtUtc { get; set; }
-    public string Outcome { get; set; } = null!;
-}
