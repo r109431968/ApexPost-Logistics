@@ -1,4 +1,5 @@
-﻿using ApexPost.Domain.Entities;
+﻿using ApexPost.Application.DTOs;
+using ApexPost.Domain.Entities;
 using ApexPost.Domain.ValueObjects;
 
 namespace ApexPost.Application.Abstractions;
@@ -26,4 +27,14 @@ public interface ICounterTransactionRepository : IRepository<CounterTransaction,
 {
     Task<IReadOnlyList<CounterTransaction>> RecentForBranchAsync(
         BranchCode branch, int count, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Read model for the transaction list: one small row per transaction (number of lines and total are computed by
+    /// the database). No aggregate is loaded and nothing is tracked.
+    /// </summary>
+    Task<IReadOnlyList<TransactionListItem>> RecentSummariesAsync(
+        BranchCode branch, int count, CancellationToken cancellationToken);
+
+    /// <summary>Loads one transaction for a read-only screen. The rows are not tracked, so nothing is saved by accident.</summary>
+    Task<CounterTransaction?> GetForViewAsync(Guid id, CancellationToken cancellationToken);
 }

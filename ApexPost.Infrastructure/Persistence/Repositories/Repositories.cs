@@ -1,8 +1,12 @@
-﻿using ApexPost.Application.Abstractions;
+﻿using System.Data;
+using ApexPost.Application.Abstractions;
+using ApexPost.Application.DTOs;
 using ApexPost.Domain.Entities;
+using ApexPost.Domain.Enums;
 using ApexPost.Domain.ValueObjects;
 using ApexPost.Infrastructure.Persistence.Sql.Entities;
 using ApexPost.Infrastructure.Persistence.Sql.Mapping;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace ApexPost.Infrastructure.Persistence.Sql.Repositories;
@@ -140,8 +144,64 @@ public sealed class CounterTransactionRepository(ApexPostDbContext db)
         return rows.Select(TransactionMapper.ToDomain).ToList();
     }
 
+    // Branch, newest first, limited. Total = sum of the line totals (quantity x unit price) + tax, the same rule as
+    // CounterTransaction.Total. The values reach SQL Server as typed parameters.
+    private const string RecentSummariesSql = """
+        SELECT TOP (@Count)
+               t.Id AS Id,
+               t.OpenedAtUtc AS OpenedAtUtc,
+               t.Status AS Status,
+               COUNT(l.LineNumber) AS LineCount,
+               COALESCE(SUM(l.Quantity * l.UnitPrice), 0) + t.TaxTotal AS Total
+        FROM CounterTransactions AS t
+        LEFT JOIN TransactionLines AS l ON l.TransactionId = t.Id
+        WHERE t.BranchCode = @BranchCode
+        GROUP BY t.Id, t.OpenedAtUtc, t.Status, t.TaxTotal
+        ORDER BY t.OpenedAtUtc DESC, t.Id
+        """;
+
+    public async Task<IReadOnlyList<TransactionListItem>> RecentSummariesAsync(
+        BranchCode branch, int count, CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
+
+        var rows = await Db.Database
+            .SqlQueryRaw<TransactionListRow>(
+                RecentSummariesSql,
+                new SqlParameter("@Count", SqlDbType.Int) { Value = count },
+                new SqlParameter("@BranchCode", SqlDbType.VarChar, 5) { Value = branch.Value })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .Select(row => new TransactionListItem(
+                row.Id,
+                new DateTimeOffset(DateTime.SpecifyKind(row.OpenedAtUtc, DateTimeKind.Utc)),
+                (TransactionStatus)row.Status,
+                row.LineCount,
+                new Money(row.Total)))
+            .ToList();
+    }
+
+    public async Task<CounterTransaction?> GetForViewAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var entity = await Query().AsNoTracking()
+            .FirstOrDefaultAsync(transaction => transaction.Id == id, cancellationToken);
+
+        return entity is null ? null : TransactionMapper.ToDomain(entity);
+    }
+
     protected override CounterTransaction ToDomain(CounterTransactionEntity entity) => TransactionMapper.ToDomain(entity);
     protected override CounterTransactionEntity ToEntity(CounterTransaction domain) => TransactionMapper.ToEntity(domain);
     protected override void Apply(CounterTransaction domain, CounterTransactionEntity entity) =>
         TransactionMapper.Apply(domain, entity);
+}
+
+/// <summary>Shape of the result set of the transaction list query. The property names match the column names.</summary>
+internal sealed class TransactionListRow
+{
+    public Guid Id { get; set; }
+    public DateTime OpenedAtUtc { get; set; }
+    public int Status { get; set; }
+    public int LineCount { get; set; }
+    public decimal Total { get; set; }
 }

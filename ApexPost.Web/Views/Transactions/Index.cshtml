@@ -10,9 +10,9 @@
     @foreach (var transaction in Model.Transactions)
     {
         <tr>
-            <td>@Fmt.When(transaction.CreatedAt)</td>
+            <td>@Fmt.When(transaction.OpenedAt)</td>
             <td><span class="badge @transaction.Status.ToString().ToLowerInvariant()">@transaction.Status</span></td>
-            <td class="num">@transaction.Lines.Count</td>
+            <td class="num">@transaction.LineCount</td>
             <td class="num">@Fmt.Price(transaction.Total)</td>
             <td><a asp-controller="Transactions" asp-action="Details" asp-route-id="@transaction.Id">Open</a></td>
         </tr>

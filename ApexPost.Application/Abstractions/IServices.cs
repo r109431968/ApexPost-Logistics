@@ -89,6 +89,6 @@ public interface ITransactionQueries
 {
     Task<CounterTransaction?> GetAsync(Guid id, CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<CounterTransaction>> RecentAsync(
+    Task<IReadOnlyList<TransactionListItem>> RecentAsync(
         BranchCode branch, int count, CancellationToken cancellationToken);
 }
