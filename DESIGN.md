@@ -42,8 +42,9 @@ interfaces, and only the composition root (`Composition/ServiceRegistration.cs`)
 * **Commands and queries are separated, in one database.** Commands (`CheckoutService`, `ReversalService`...) load domain aggregates and commit through the unit of work.
   Queries go through query services (`ReportService`, `SqlReportService`, `CatalogueService`). **No separate read database is used**: reads and writes use the same SQL Server database
   (`ApexPostDb`), as the lab allows. The two daily reports (daily branch sales, low stock) and the stock adjustment run as stored procedures
-  ([ADR-003](docs/adr/ADR-003-stored-procedures.md)). The other reads (shipping volume, money-order audit, dashboard alerts and the transaction screens) still load aggregates
-  through the repositories; moving them to `AsNoTracking` projections is listed under known limitations (section 11).
+  ([ADR-003](docs/adr/ADR-003-stored-procedures.md)). Shipping volume, the money-order audit and the dashboard alerts run as set-based, parameterised SQL
+  inside `SqlReportService` and return one row per group (or per money order), so no transaction with its lines is loaded for them. The transaction screens still load
+  domain aggregates; moving them to `AsNoTracking` projections is listed under known limitations (section 11).
 * **Concurrency.** `BranchStock` and `CounterTransactions` have a `rowversion` column. Two clerks selling the last item at the same moment:
   the second `SaveChanges` raises `DbUpdateConcurrencyException`, `UnitOfWork` translates it to `ConcurrencyConflictException`, and the web layer answers
   HTTP 409 ([ADR-006](docs/adr/ADR-006-concurrency-strategy.md)). A unique index violation becomes `DuplicateValueException` (409) in the same way.
@@ -344,5 +345,7 @@ Identity verification is a simulated service (`IIdentityVerificationService`). T
 * The courier service and notifications are simulations.
 * Audit integrity depends on database permissions (see section 10).
 * LocalDB is used for development and tests; a production SQL Server needs its own backup, login and role set-up (`sql/11_least_privilege.sql` is the starting point).
-* Shipping volume, the money-order audit, the dashboard alerts and the transaction screens still load domain aggregates through `ListAsync(spec)` and filter in C#; they are correct, but they do not scale to the
-  200 000-row volume used in `PERFORMANCE.md`. The next step is `AsNoTracking` projections into DTOs or stored procedures, like the two daily reports.
+* The base `ReportService` (the in-memory reference implementation used by the unit tests) still loads aggregates through `ListAsync(spec)` and filters in C#. The web application does not use it for any report: `SqlReportService`
+  overrides all of them, and integration tests compare the SQL answers with the reference.
+* The transaction list and details screens still load domain aggregates (the details screen tracked). They are correct, but a list at the 200 000-row volume of `PERFORMANCE.md` would need an `AsNoTracking` projection
+  into a query DTO.

@@ -25,9 +25,9 @@ public interface IReportService
 }
 
 /// <summary>
-/// Report use cases computed in memory from the repositories. The web application uses a subclass that runs the daily
-/// sales and low-stock reports as SQL Server stored procedures; this class stays the reference implementation, and the
-/// integration tests check that the stored procedures give the same answers.
+/// Report use cases computed in memory from the repositories. The web application uses a subclass that runs every report
+/// inside SQL Server (stored procedures for the daily sales and low-stock reports, aggregate queries for the rest); this
+/// class stays the reference implementation, and the integration tests check that the database gives the same answers.
 /// </summary>
 public class ReportService(
     IRepository<CounterTransaction, Guid> transactionRepo,
@@ -87,7 +87,7 @@ public class ReportService(
         return result;
     }
 
-    public async Task<IReadOnlyList<ShippingVolumeRow>> ShippingVolumeAsync(
+    public virtual async Task<IReadOnlyList<ShippingVolumeRow>> ShippingVolumeAsync(
         DateOnly fromDay, DateOnly toDay, BranchCode? branch, CancellationToken cancellationToken)
     {
         if (toDay < fromDay)
@@ -110,7 +110,7 @@ public class ReportService(
             .ToList();
     }
 
-    public async Task<IReadOnlyList<BranchMoneyOrderSummary>> MoneyOrderAuditAsync(
+    public virtual async Task<IReadOnlyList<BranchMoneyOrderSummary>> MoneyOrderAuditAsync(
         BranchCode? branch, CancellationToken cancellationToken)
     {
         var withOrders = await transactionRepo.ListAsync(TransactionSpecs.WithMoneyOrders(branch), cancellationToken);
@@ -137,7 +137,7 @@ public class ReportService(
         return new BranchDashboard(branch, today, sales, stock, alerts);
     }
 
-    private async Task<IReadOnlyList<DashboardAlert>> AlertsAsync(
+    protected virtual async Task<IReadOnlyList<DashboardAlert>> AlertsAsync(
         BranchCode branch, DateOnly day, CancellationToken cancellationToken)
     {
         var todays = await transactionRepo.ListAsync(TransactionSpecs.CreatedOnDay(branch, day), cancellationToken);

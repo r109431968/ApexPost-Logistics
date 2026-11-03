@@ -5,7 +5,7 @@ namespace ApexPost.Application.Abstractions;
 
 /// <summary>
 /// Generic repository. The constraint means only types that have an Id can be stored, and the same
-/// interface is implemented by JSON files today and by a database next week.
+/// interface was implemented by JSON files in Week 2 and is implemented by SQL Server (EF Core) now.
 /// </summary>
 public interface IRepository<T, in TId>
     where T : Entity<TId>

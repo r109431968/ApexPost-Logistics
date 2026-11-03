@@ -1,6 +1,7 @@
 using System.Net;
 using ApexPost.Application.Abstractions;
 using ApexPost.Application.Exceptions;
+using ApexPost.Application.DTOs;
 using ApexPost.Application.Reports;
 using ApexPost.Application.Settings;
 using ApexPost.Domain.Entities;
@@ -9,6 +10,7 @@ using ApexPost.Domain.ValueObjects;
 using ApexPost.IntegrationTests.Support;
 using ApexPost.Web.Middleware;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -248,6 +250,109 @@ public class SqlPersistenceTests(ApexFactory factory, ITestOutputHelper output) 
         Assert.Equal(
             expected.Select(i => (i.Sku.Value, i.Quantity)).OrderBy(i => i.Value).ToList(),
             actual.Select(i => (i.Sku.Value, i.Quantity)).OrderBy(i => i.Value).ToList());
+    }
+
+    // ---- Set-based reports: SQL Server gives the same answer as the in-memory reference -------------------------
+
+    private static ReportService InMemoryReports(IServiceProvider sp) => new(
+        sp.GetRequiredService<IRepository<CounterTransaction, Guid>>(),
+        sp.GetRequiredService<IRepository<StockItem, string>>(),
+        sp.GetRequiredService<IRepository<Product, Sku>>(),
+        new StockSettings(),
+        new MoneyOrderSettings(),
+        sp.GetRequiredService<IClock>());
+
+    [Fact]
+    public async Task Shipping_volume_from_sql_matches_the_in_memory_calculation()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var sp = scope.ServiceProvider;
+        var fromSql = sp.GetRequiredService<IReportService>();
+        var fromDomain = InMemoryReports(sp);
+
+        var to = DateOnly.FromDateTime(DateTime.UtcNow);
+        var from = to.AddDays(-90);
+
+        foreach (var branch in new BranchCode?[] { null, Br001 })
+        {
+            var expected = await fromDomain.ShippingVolumeAsync(from, to, branch, default);
+            var actual = await fromSql.ShippingVolumeAsync(from, to, branch, default);
+
+            if (branch is null)
+                Assert.NotEmpty(actual);
+
+            Assert.Equal(
+                expected.Select(row => (row.ZoneCode, row.ServiceLevel, row.ShipmentCount, row.TotalWeightKg, row.Revenue.Amount)).ToList(),
+                actual.Select(row => (row.ZoneCode, row.ServiceLevel, row.ShipmentCount, row.TotalWeightKg, row.Revenue.Amount)).ToList());
+        }
+    }
+
+    [Fact]
+    public async Task The_money_order_audit_from_sql_matches_the_in_memory_calculation()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var sp = scope.ServiceProvider;
+        var fromSql = sp.GetRequiredService<IReportService>();
+        var fromDomain = InMemoryReports(sp);
+
+        foreach (var branch in new BranchCode?[] { null, Br001 })
+        {
+            var expected = await fromDomain.MoneyOrderAuditAsync(branch, default);
+            var actual = await fromSql.MoneyOrderAuditAsync(branch, default);
+
+            if (branch is null)
+                Assert.NotEmpty(actual);
+
+            Assert.Equal(
+                expected.Select(Totals).ToList(),
+                actual.Select(Totals).ToList());
+
+            Assert.Equal(
+                expected.SelectMany(summary => summary.Rows).Select(RowKey).Order().ToList(),
+                actual.SelectMany(summary => summary.Rows).Select(RowKey).Order().ToList());
+        }
+
+        static (string, int, decimal, int, int, int) Totals(BranchMoneyOrderSummary summary) => (
+            summary.BranchCode.Value, summary.PaidMoneyOrderCount, summary.PaidTotalAmount.Amount,
+            summary.VerificationsPassed, summary.VerificationsFailed, summary.Rows.Count);
+
+        static string RowKey(MoneyOrderAuditRow row) =>
+            $"{row.TransactionId}|{row.At.UtcDateTime:O}|{row.Status}|{row.Amount.Amount}|{row.Fee.Amount}|{row.DocumentType}|{row.MaskedDocumentNumber}|{row.VerificationResult}";
+    }
+
+    [Fact]
+    public async Task Dashboard_alerts_from_sql_match_the_in_memory_calculation()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var sp = scope.ServiceProvider;
+        var fromSql = sp.GetRequiredService<IReportService>();
+        var fromDomain = InMemoryReports(sp);
+
+        var expected = await fromDomain.DashboardAsync(Br001, default);
+        var actual = await fromSql.DashboardAsync(Br001, default);
+
+        Assert.Equal(expected.Day, actual.Day);
+        Assert.Equal(
+            expected.Alerts.Select(alert => $"{alert.Kind}|{alert.Message}|{alert.TransactionId}").Order().ToList(),
+            actual.Alerts.Select(alert => $"{alert.Kind}|{alert.Message}|{alert.TransactionId}").Order().ToList());
+    }
+
+    [Theory]
+    [InlineData("EXEC dbo.usp_DailyBranchSales @Day = NULL", 50020)]
+    [InlineData("EXEC dbo.usp_DailyBranchSales @Day = '2026-10-31', @BranchCode = 'XX'", 50021)]
+    [InlineData("EXEC dbo.usp_LowStockReport @Threshold = -1", 50022)]
+    [InlineData("EXEC dbo.usp_LowStockReport @CategoryId = 999999", 50023)]
+    public async Task The_report_procedures_reject_bad_parameters_with_a_clear_error(string call, int expectedError)
+    {
+        await using var db = factory.CreateDbContext();
+        var connection = db.Database.GetDbConnection();
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = call;
+
+        var error = await Assert.ThrowsAsync<SqlException>(() => command.ExecuteNonQueryAsync());
+
+        Assert.Equal(expectedError, error.Number);
     }
 
     [Fact]
