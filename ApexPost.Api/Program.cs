@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using ApexPost.Api.Composition;
 using ApexPost.Api.Development;
 using ApexPost.Api.Errors;
+using ApexPost.Api.Security;
 
 // Minimal hosting: this file is only the composition root and the request pipeline. There is no Startup class.
 var builder = WebApplication.CreateBuilder(args);
@@ -34,6 +35,18 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 builder.Services.AddApexPostVersioning();   // /api/v1/... and /api/v2/...
 builder.Services.AddApexPostOpenApi();      // one OpenAPI document per version, built by the .NET generator
 
+// Who may call what: JWT bearer for couriers and admins, an API key for the partner route (see SECURITY.md).
+builder.Services.AddApexPostSecurity(builder.Configuration, builder.Environment);
+
+// HTTPS only: plain http is redirected (308, method and body are kept) and browsers are told to stay on https (HSTS).
+// Behind a reverse proxy set ASPNETCORE_HTTPS_PORT (and forward the original scheme) so the redirect knows the https port.
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = true;
+});
+builder.Services.AddHttpsRedirection(options => options.RedirectStatusCode = StatusCodes.Status308PermanentRedirect);
+
 // Every error, from validation (400) to a crash (500), is returned as application/problem+json.
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
@@ -47,14 +60,23 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 
 app.UseHttpsRedirection();
-app.UseAuthorization();
+app.UseRateLimiter();        // limits the sign-in endpoint
+app.UseAuthentication();     // reads the Bearer token (or the API key on the partner route)
+app.UseAuthorization();      // roles, policies and the fallback "must be signed in" rule
 app.MapControllers();
+
+if (app.Services.GetRequiredService<JwtSettings>().KeyIsEphemeral)
+{
+    app.Logger.LogWarning(
+        "Auth:Jwt:SigningKey is not set, so a random key was made for this run. Tokens stop working when the API restarts. " +
+        "Run scripts/set-dev-secrets.ps1 once to store a key in user-secrets.");
+}
 
 if (app.Environment.IsDevelopment())
 {
     // The documents and the interactive page exist in Development only. Hiding them is not security;
     // the endpoints themselves are exactly as reachable as before.
-    app.MapOpenApi();            // /openapi/v1.json and /openapi/v2.json
+    app.MapOpenApi().AllowAnonymous();   // /openapi/v1.json and /openapi/v2.json (the fallback policy would otherwise ask for a token)
 
     app.UseSwaggerUI(options =>  // /swagger, reads the documents above
     {

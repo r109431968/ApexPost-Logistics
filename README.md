@@ -170,3 +170,7 @@ dotnet run --project ApexPost.Client.Demo                # creates, fetches, upl
 ```
 
 The generated file is never edited by hand. Extra code goes into partial classes or wrappers (`ApexPostClientExtensions.cs`).
+
+## ApexPost.Api: security (Part D)
+
+Every endpoint except the sign-in needs a JWT; roles are `Courier` and `Admin`; a courier can upload scans only under their own `courierId` (403 otherwise); partners read `GET /api/v2/partner/shipments/{trackingNumber}` with an `X-Api-Key`. HTTPS redirection and HSTS are on, and the OpenAPI documents declare the Bearer and ApiKey schemes. Secrets are never committed: run `.\scripts\set-dev-secrets.ps1` once. See [SECURITY.md](SECURITY.md) for the rules, the OAuth 2.0 flows, why API keys are weaker, and TLS.
