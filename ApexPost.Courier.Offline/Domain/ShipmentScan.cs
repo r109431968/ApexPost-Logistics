@@ -14,6 +14,10 @@ public sealed record ShipmentScan
     public required string Location { get; init; }
     public required DateTimeOffset ScannedAtUtc { get; init; }
     public string? Notes { get; init; }
+
+    /// <summary>Name of the person who signed for the parcel. The central system requires it for a Delivered scan.</summary>
+    public string? RecipientSignatureName { get; init; }
+
     public SyncStatus SyncStatus { get; init; } = SyncStatus.Pending;
 
     /// <summary>Creates a new scan that is waiting to be uploaded (syncStatus = Pending).</summary>
@@ -23,7 +27,8 @@ public sealed record ShipmentScan
         string courierId,
         string location,
         string? notes = null,
-        DateTimeOffset? scannedAtUtc = null)
+        DateTimeOffset? scannedAtUtc = null,
+        string? recipientSignatureName = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(trackingNumber);
         ArgumentException.ThrowIfNullOrWhiteSpace(courierId);
@@ -42,6 +47,7 @@ public sealed record ShipmentScan
             Location = location.Trim(),
             ScannedAtUtc = TruncateToMilliseconds((scannedAtUtc ?? DateTimeOffset.UtcNow).ToUniversalTime()),
             Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
+            RecipientSignatureName = string.IsNullOrWhiteSpace(recipientSignatureName) ? null : recipientSignatureName.Trim(),
             SyncStatus = SyncStatus.Pending
         };
     }

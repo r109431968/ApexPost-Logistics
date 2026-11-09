@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Everything the courier app does that does not need MAUI: the typed API client, the sign-in, the token handler,
+    the resilience pipeline and the sync. It is a plain net10.0 library, so it has unit tests (ApexPost.Courier.Core.Tests).
+    The package Microsoft.Extensions.Http.Resilience (Polly v8 for HttpClient) is added with: dotnet add ApexPost.Courier.Core package Microsoft.Extensions.Http.Resilience
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>ApexPost.Courier.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ApexPost.Courier.Offline\ApexPost.Courier.Offline.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
+  </ItemGroup>
+
+</Project>
