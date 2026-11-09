@@ -173,6 +173,12 @@ classDiagram
 **Entities** (identity matters, they change over time): Branch, Counter, Staff, Product, StockItem, ShippingZone, CounterTransaction.
 **Value objects** (immutable, equal by value, validate themselves): Money, Weight, Address, BranchCode, Sku, IdentityVerification.
 
+**Owned type.** `Branch.Address` is persisted as an owned type: `BranchEntity.Address` is mapped with `OwnsOne`, so the four parts are
+columns of the `Branches` row (`Address_Line1`, `Address_City`, `Address_Postcode`, `Address_Country`). An address has no identity and no
+life of its own, so it gets no table, key or repository; it is loaded and saved with its branch, and the whole address is optional
+(all four columns are NULL when a branch has none). The owned type is skipped by the audit-column loop in `ApexPostDbContext`, because it is
+part of its owner's row. See `SqlPersistenceTests` for the round-trip tests.
+
 **Mixed basket.** A basket holds `ILineItem`s. Retail goods, shipping and money orders are separate classes
 that implement the interface (composition), so the transaction does not care what a line is, and a new service
 type is one new class (see ADR-2).

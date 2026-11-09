@@ -894,3 +894,48 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261109200413_BranchAddressOwnedType'
+)
+BEGIN
+    ALTER TABLE [Branches] ADD [Address_City] nvarchar(80) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261109200413_BranchAddressOwnedType'
+)
+BEGIN
+    ALTER TABLE [Branches] ADD [Address_Country] nvarchar(60) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261109200413_BranchAddressOwnedType'
+)
+BEGIN
+    ALTER TABLE [Branches] ADD [Address_Line1] nvarchar(120) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261109200413_BranchAddressOwnedType'
+)
+BEGIN
+    ALTER TABLE [Branches] ADD [Address_Postcode] nvarchar(12) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261109200413_BranchAddressOwnedType'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261109200413_BranchAddressOwnedType', N'10.0.14');
+END;
+
+COMMIT;
+GO
+
