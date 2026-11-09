@@ -1,4 +1,4 @@
-using ApexPost.Courier.Core.Auth;
+﻿using ApexPost.Courier.Core.Auth;
 using ApexPost.Courier.Offline.Sync;
 
 namespace ApexPost.Courier.Core.Sync;
@@ -25,7 +25,7 @@ public sealed class SyncCoordinator(BatchSyncService sync, AuthService auth)
         }
 
         var result = await sync.SyncAsync(cancellationToken).ConfigureAwait(false);
-        if (result.StopReason != SyncStopReason.AlreadyRunning)
+        if (result.StopReason != SyncStopReason.AlreadyRunning && (result.Attempted > 0 || LastResult is null))
         {
             LastResult = result;
             LastRunAtUtc = DateTimeOffset.UtcNow;
@@ -52,3 +52,4 @@ public sealed class SyncCoordinator(BatchSyncService sync, AuthService auth)
         }
     }
 }
+
