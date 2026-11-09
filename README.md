@@ -58,6 +58,12 @@ Needs the .NET 10 SDK, SQL Server **LocalDB** (installed with Visual Studio) and
 4. **Tests**: `dotnet test ApexPost.slnx`. The integration tests create `ApexPostDb_Test_<guid>` on LocalDB, fill it through the real migrations and seeder, and drop it afterwards
    (set `APEXPOST_TEST_SERVER` to use another SQL Server with Windows authentication). They never touch `ApexPostDb`.
 
+   **Week 2 business-rule tests.** The Week 2 domain and service tests run against the same rules as before. Compared with the Week 2 branch
+   the only edit to an existing business-rule test is one argument in `MoneyOrderVerificationTests` (`AttachVerificationAsync` no longer takes
+   a `VerificationResult`, because the system now decides the result, so a clerk cannot force a pass). The file-store tests in
+   `InfrastructureTests` were removed with the JSON repositories they tested; SQL Server persistence is covered by `SqlPersistenceTests` instead.
+   The new tests are additions: `CommitCountTests` (one commit or none), `ConcurrencyHttpTests` (stock conflict gives HTTP 409), and the SQL tests.
+
 5. **Windows program (.exe)**: `publish.bat` creates `publish\ApexPost.Web.exe`; `run-published.bat` starts it (set the connection string as an environment variable `ConnectionStrings__ApexPostDb`).
 
 ## Demo accounts

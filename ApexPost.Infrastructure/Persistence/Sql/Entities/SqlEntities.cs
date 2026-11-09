@@ -26,7 +26,20 @@ public sealed class BranchEntity
     public TimeOnly OpensAt { get; set; }
     public TimeOnly ClosesAt { get; set; }
     public bool IsActive { get; set; }
+
+    /// <summary>Owned type: stored as Address_* columns on the Branches table, no separate table or key.</summary>
+    public AddressValue? Address { get; set; }
+
     public List<CounterEntity> Counters { get; set; } = [];
+}
+
+/// <summary>Persistence shape of the Address value object, mapped with OwnsOne.</summary>
+public sealed class AddressValue
+{
+    public string Line1 { get; set; } = null!;
+    public string City { get; set; } = null!;
+    public string Postcode { get; set; } = null!;
+    public string Country { get; set; } = null!;
 }
 
 public sealed class CounterEntity

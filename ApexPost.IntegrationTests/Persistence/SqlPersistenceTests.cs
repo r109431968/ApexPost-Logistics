@@ -543,4 +543,59 @@ public class SqlPersistenceTests(ApexFactory factory, ITestOutputHelper output) 
         Assert.NotEqual("evil-hash", created.PasswordHash);
         Assert.Equal(StaffRole.CounterClerk, created.RoleId);
     }
+
+    // ---- Owned type ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task The_branch_address_is_stored_as_columns_of_the_branch_row_and_read_back_as_a_value_object()
+    {
+        var code = new BranchCode("BR901");
+        var address = new Address { Line1 = "9 Test Lane", City = "Testville", Postcode = "tv9 1ab", Country = "Fictionland" };
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var branches = scope.ServiceProvider.GetRequiredService<IBranchRepository>();
+            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+            var branch = new Branch(code, "Owned Type Depot", "Test", new TimeOnly(8, 0), new TimeOnly(17, 0));
+            branch.MoveTo(address);
+            await branches.AddAsync(branch, default);
+            await uow.SaveChangesAsync(default);
+        }
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var loaded = await scope.ServiceProvider.GetRequiredService<IBranchRepository>().GetByIdAsync(code, default);
+
+            Assert.NotNull(loaded);
+            Assert.Equal(address, loaded!.Address);          // value equality: the postcode was normalised to upper case
+            Assert.Equal("TV9 1AB", loaded.Address!.Postcode);
+        }
+
+        // One table, no join: the address is part of the Branches row.
+        await using var db = factory.CreateDbContext();
+        var row = await db.Branches.AsNoTracking().SingleAsync(x => x.Code == code);
+        Assert.Equal("Testville", row.Address!.City);
+        Assert.Contains(db.Model.FindEntityType(typeof(ApexPost.Infrastructure.Persistence.Sql.Entities.BranchEntity))!.GetNavigations(),
+            navigation => navigation.Name == "Address" && navigation.TargetEntityType.IsOwned());
+    }
+
+    [Fact]
+    public async Task A_branch_without_an_address_is_stored_with_null_columns_and_loads_with_no_address()
+    {
+        var code = new BranchCode("BR902");
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<IBranchRepository>()
+                .AddAsync(new Branch(code, "No Address Depot", "Test", new TimeOnly(8, 0), new TimeOnly(17, 0)), default);
+            await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().SaveChangesAsync(default);
+        }
+
+        await using var read = factory.Services.CreateAsyncScope();
+        var loaded = await read.ServiceProvider.GetRequiredService<IBranchRepository>().GetByIdAsync(code, default);
+
+        Assert.NotNull(loaded);
+        Assert.Null(loaded!.Address);
+    }
 }

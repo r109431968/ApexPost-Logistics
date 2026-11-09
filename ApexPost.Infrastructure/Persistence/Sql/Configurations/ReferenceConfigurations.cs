@@ -44,6 +44,17 @@ public sealed class BranchConfiguration : IEntityTypeConfiguration<BranchEntity>
         builder.Property(x => x.Code).HasColumnName("BranchCode").ValueGeneratedNever();
         builder.Property(x => x.Name).HasMaxLength(100).IsRequired();
         builder.Property(x => x.Region).HasMaxLength(60).IsRequired();
+
+        // Owned type: the Address value object lives in the Branches row (Address_Line1 ...), not in its own table.
+        // The whole address is optional; when present every part is required.
+        builder.OwnsOne(x => x.Address, address =>
+        {
+            address.Property(a => a.Line1).HasColumnName("Address_Line1").HasMaxLength(120).IsRequired();
+            address.Property(a => a.City).HasColumnName("Address_City").HasMaxLength(80).IsRequired();
+            address.Property(a => a.Postcode).HasColumnName("Address_Postcode").HasMaxLength(12).IsRequired();
+            address.Property(a => a.Country).HasColumnName("Address_Country").HasMaxLength(60).IsRequired();
+        });
+        builder.Navigation(x => x.Address).IsRequired(false);
     }
 }
 

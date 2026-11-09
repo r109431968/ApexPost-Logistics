@@ -23,6 +23,14 @@ internal static class BranchMapper
         foreach (var counter in entity.Counters.OrderBy(c => c.Label, StringComparer.Ordinal))
             branch.AddCounter(counter.Id, counter.Label);
 
+        if (entity.Address is { } stored)
+        {
+            branch.MoveTo(new Address
+            {
+                Line1 = stored.Line1, City = stored.City, Postcode = stored.Postcode, Country = stored.Country
+            });
+        }
+
         if (!entity.IsActive)
             branch.Close();
 
@@ -43,6 +51,9 @@ internal static class BranchMapper
         entity.OpensAt = branch.OpensAt;
         entity.ClosesAt = branch.ClosesAt;
         entity.IsActive = branch.IsActive;
+        entity.Address = branch.Address is { } address
+            ? new AddressValue { Line1 = address.Line1, City = address.City, Postcode = address.Postcode, Country = address.Country }
+            : null;
 
         foreach (var counter in branch.Counters)
         {

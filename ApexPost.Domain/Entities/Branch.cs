@@ -12,6 +12,10 @@ public sealed class Branch : Entity<BranchCode>
     public TimeOnly OpensAt { get; private set; }
     public TimeOnly ClosesAt { get; private set; }
     public bool IsActive { get; private set; }
+
+    /// <summary>Street address of the branch. Optional: older branches were created without one.</summary>
+    public Address? Address { get; private set; }
+
     public IReadOnlyList<Counter> Counters => _counters;
 
     public Branch(BranchCode code, string name, string region, TimeOnly opensAt, TimeOnly closesAt)
@@ -38,6 +42,8 @@ public sealed class Branch : Entity<BranchCode>
         _counters.Add(counter);
         return counter;
     }
+
+    public void MoveTo(Address? address) => Address = address;
 
     public void Close() => IsActive = false;
     public void Reopen() => IsActive = true;

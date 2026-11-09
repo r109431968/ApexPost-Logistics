@@ -5,7 +5,7 @@ obj/
 *.suo
 publish/
 TestResults/
-# Runtime data (seeded JSON, password hashes, audit log) is generated on first run.
+# Local runtime output. Data lives in SQL Server; secrets come from user-secrets, never from files in the repo.
 ApexPost.Web/data/
 secrets.json
 publish/

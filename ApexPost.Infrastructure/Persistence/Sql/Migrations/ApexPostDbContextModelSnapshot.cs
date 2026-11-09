@@ -821,6 +821,48 @@ namespace ApexPost.Infrastructure.Persistence.Sql.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Sql.Entities.BranchEntity", b =>
+                {
+                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Sql.Entities.AddressValue", "Address", b1 =>
+                        {
+                            b1.Property<string>("BranchEntityCode")
+                                .HasColumnType("varchar(5)");
+
+                            b1.Property<string>("City")
+                                .IsRequired()
+                                .HasMaxLength(80)
+                                .HasColumnType("nvarchar(80)")
+                                .HasColumnName("Address_City");
+
+                            b1.Property<string>("Country")
+                                .IsRequired()
+                                .HasMaxLength(60)
+                                .HasColumnType("nvarchar(60)")
+                                .HasColumnName("Address_Country");
+
+                            b1.Property<string>("Line1")
+                                .IsRequired()
+                                .HasMaxLength(120)
+                                .HasColumnType("nvarchar(120)")
+                                .HasColumnName("Address_Line1");
+
+                            b1.Property<string>("Postcode")
+                                .IsRequired()
+                                .HasMaxLength(12)
+                                .HasColumnType("nvarchar(12)")
+                                .HasColumnName("Address_Postcode");
+
+                            b1.HasKey("BranchEntityCode");
+
+                            b1.ToTable("Branches");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BranchEntityCode");
+                        });
+
+                    b.Navigation("Address");
+                });
+
             modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Sql.Entities.BranchStockEntity", b =>
                 {
                     b.HasOne("ApexPost.Infrastructure.Persistence.Sql.Entities.BranchEntity", null)

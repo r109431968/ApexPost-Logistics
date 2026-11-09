@@ -47,9 +47,13 @@ public sealed class ApexPostDbContext(DbContextOptions<ApexPostDbContext> option
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApexPostDbContext).Assembly);
 
         // Audit columns are shadow properties: they exist in the table but not on the entity classes.
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())
         {
+            // Owned types (Branch.Address) are part of their owner's row, so they get no audit columns of their own.
             var clrType = entityType.ClrType;
+            if (entityType.IsOwned() || entityType.FindOwnership() is not null || clrType == typeof(AddressValue))
+                continue;
+
             if (clrType == typeof(RoleEntity) || clrType == typeof(ProductCategoryEntity))
                 continue;
 

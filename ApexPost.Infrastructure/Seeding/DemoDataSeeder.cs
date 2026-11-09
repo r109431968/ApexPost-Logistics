@@ -180,6 +180,11 @@ public sealed class DemoDataSeeder(
             var branch = new Branch(
                 new BranchCode(data.Code), data.Name, data.Region, new TimeOnly(data.OpenHour, 0), new TimeOnly(data.CloseHour, 0));
 
+            branch.MoveTo(new Address
+            {
+                Line1 = $"{index + 1} Depot Road", City = data.Region, Postcode = $"AP{index + 1:D2} 1XX", Country = "Fictionland"
+            });
+
             for (var counter = 1; counter <= 3; counter++)
                 branch.AddCounter(Guid.Parse($"10000000-0000-0000-0000-{index * 10 + counter:D12}"), $"Counter {counter}");
 
