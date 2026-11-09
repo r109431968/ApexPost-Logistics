@@ -31,3 +31,14 @@ So exactly one process, the courier app, owns the files. Anything else that need
 
 `dotnet run --project ApexPost.Courier.Offline.Harness` and `dotnet test ApexPost.Courier.Offline.Tests`. All data is fictional.
 The harness database is in `%LOCALAPPDATA%\ApexPost\courier-offline`; tests use temporary folders. A tracking number that starts with `FAIL` is rejected by the fake uploader, so both sync outcomes can be shown.
+
+## Part D: how the outbox sends scans to the API
+
+`BatchSyncService` takes the `Pending` scans oldest first and sends them in **batches of 20**. Each scan comes back with its own outcome:
+
+- **Synced**: the server has it (a repeated scan id counts as already there, so a retry is safe).
+- **Rejected** (400, 403, 404, 409): the scan becomes `Failed`, stays on the device and the courier sees the reason.
+- **RetryLater** (network down, timeout, 5xx, open circuit): the scan stays `Pending` and the run stops, because the next batch would fail the same way.
+- **Unauthorized** (401): the run stops, nothing is marked, and the app shows the Login page.
+
+Only one run at a time (a second call while one is running returns at once). The REST API takes scans for one shipment per call, so a batch of 20 is split by tracking number and courier before it is sent. A `Delivered` scan carries the recipient signature name (`recipientSignatureName`), which the New Scan screen asks for before saving. The timing rules (when a run starts) are in `SyncScheduler`; the retry and circuit breaker rules are in [RESILIENCE.md](RESILIENCE.md).

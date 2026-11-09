@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="ApexPost.Courier.Views.SyncStatusPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:views="clr-namespace:ApexPost.Courier.Views"
+    xmlns:vm="clr-namespace:ApexPost.Courier.ViewModels"
+    x:DataType="vm:SyncStatusViewModel"
+    Title="Sync Status">
+    <Grid RowDefinitions="Auto,*">
+        <views:OfflineBanner Grid.Row="0" />
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="24" Spacing="10" MaximumWidthRequest="560">
+                <Label Text="{Binding NetworkText}" />
+                <Label Text="{Binding ServerText}" />
+                <Label Text="{Binding CountsText}" FontAttributes="Bold" />
+                <Label Text="{Binding LastRunText}" />
+                <Label Text="{Binding LastResultText}" />
+                <Label Text="{Binding RejectionsText}" TextColor="#B3261E" IsVisible="{Binding HasRejections}" />
+                <Button Text="Sync now" Command="{Binding SyncNowCommand}" IsEnabled="{Binding IsNotBusy}" AutomationId="SyncNow" />
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

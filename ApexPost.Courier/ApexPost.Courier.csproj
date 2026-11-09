@@ -1,0 +1,56 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+        <PropertyGroup>
+                <!-- Android (emulator or phone) and Windows (the demo default). iOS and Mac need a Mac and are not part of this lab. -->
+                <TargetFrameworks>net10.0-android</TargetFrameworks>
+                <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
+
+                <OutputType>Exe</OutputType>
+                <RootNamespace>ApexPost.Courier</RootNamespace>
+                <UseMaui>true</UseMaui>
+                <SingleProject>true</SingleProject>
+                <ImplicitUsings>enable</ImplicitUsings>
+                <Nullable>enable</Nullable>
+                <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+                <MauiXamlInflator>SourceGen</MauiXamlInflator>
+
+                <ApplicationTitle>ApexPost Courier</ApplicationTitle>
+                <ApplicationId>com.apexpost.courier</ApplicationId>
+                <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+                <ApplicationVersion>1</ApplicationVersion>
+
+                <!-- Unpackaged Windows app: runs with dotnet run / F5 without the Microsoft Store packaging. -->
+                <WindowsPackageType>None</WindowsPackageType>
+
+                <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
+                <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
+                <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+        </PropertyGroup>
+
+        <ItemGroup>
+                <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+                <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
+                <MauiImage Include="Resources\Images\*" />
+                <MauiImage Update="Resources\Images\dotnet_bot.png" Resize="True" BaseSize="300,185" />
+                <MauiFont Include="Resources\Fonts\*" />
+                <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+        </ItemGroup>
+
+        <ItemGroup>
+                <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+                <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+                <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+        </ItemGroup>
+
+        <!-- Couchbase Lite needs a small platform package on each platform. The version must be the same as Couchbase.Lite (4.1.2). -->
+        <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+                <PackageReference Include="Couchbase.Lite.Support.Android" Version="4.1.2" />
+        </ItemGroup>
+
+        <ItemGroup>
+                <ProjectReference Include="..\ApexPost.Courier.Core\ApexPost.Courier.Core.csproj" />
+                <ProjectReference Include="..\ApexPost.Courier.Offline\ApexPost.Courier.Offline.csproj" />
+        </ItemGroup>
+
+</Project>
+
