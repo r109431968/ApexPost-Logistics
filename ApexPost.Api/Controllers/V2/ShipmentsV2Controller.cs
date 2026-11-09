@@ -1,9 +1,11 @@
 using Asp.Versioning;
 using ApexPost.Api.Contracts;
+using ApexPost.Api.Security;
 using ApexPost.Api.Contracts.V2;
 using ApexPost.Api.Mapping;
 using ApexPost.Application.Abstractions;
 using ApexPost.Domain.Parcels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApexPost.Api.Controllers.V2;
@@ -14,6 +16,9 @@ namespace ApexPost.Api.Controllers.V2;
 /// Every business rule (transitions, duplicates, delete rule) lives in the service.
 /// </remarks>
 [ApiController]
+[Authorize(Roles = ApiRoles.CourierOrAdmin)]
+[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
 [ApiVersion("2.0")]
 [Route("api/v{version:apiVersion}/shipments")]
 [Consumes("application/json")]
@@ -51,6 +56,7 @@ public sealed class ShipmentsV2Controller(IParcelService parcels) : ControllerBa
     /// <param name="request">The shipment details.</param>
     /// <param name="cancellationToken">Cancelled when the caller disconnects.</param>
     /// <returns>The new shipment, with a Location header that points to it.</returns>
+    [Authorize(Roles = ApiRoles.Admin)]
     [HttpPost(Name = "CreateShipmentV2")]
     [EndpointSummary("Create a shipment")]
     [ProducesResponseType<ShipmentResponseV2>(StatusCodes.Status201Created)]
@@ -69,6 +75,7 @@ public sealed class ShipmentsV2Controller(IParcelService parcels) : ControllerBa
     /// <param name="request">The new details.</param>
     /// <param name="cancellationToken">Cancelled when the caller disconnects.</param>
     /// <returns>The updated shipment.</returns>
+    [Authorize(Roles = ApiRoles.Admin)]
     [HttpPut(TrackingRoute, Name = "ReplaceShipmentV2")]
     [EndpointSummary("Replace shipment details")]
     [ProducesResponseType<ShipmentResponseV2>(StatusCodes.Status200OK)]
@@ -99,6 +106,7 @@ public sealed class ShipmentsV2Controller(IParcelService parcels) : ControllerBa
     /// <summary>Deletes a shipment. Only allowed while its status is Created.</summary>
     /// <param name="trackingNumber">For example APX-12345678.</param>
     /// <param name="cancellationToken">Cancelled when the caller disconnects.</param>
+    [Authorize(Roles = ApiRoles.Admin)]
     [HttpDelete(TrackingRoute, Name = "DeleteShipmentV2")]
     [EndpointSummary("Delete a shipment")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

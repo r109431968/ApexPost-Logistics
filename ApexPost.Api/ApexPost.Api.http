@@ -1,14 +1,134 @@
-### ApexPost.Api (Part B and C). Start the API first:  dotnet run --project ApexPost.Api
+### ApexPost.Api (Parts B, C and D). Start the API first:  dotnet run --project ApexPost.Api --launch-profile https
 ### Every endpoint has a success request and a failure request, for version 1 (deprecated) and version 2.
 ### Run each version from top to bottom. v1 and v2 use different tracking numbers so they do not collide.
 ### The OpenAPI documents and Swagger UI exist in Development: /openapi/v1.json, /openapi/v2.json, /swagger
+###
+### SECURITY (Part D): every endpoint except the sign-in needs a token. Run .\scripts\set-dev-secrets.ps1 once, then copy the two
+### values it prints into @demoPassword and @partnerKey below. Do not commit them.
 
 @host = https://localhost:7241
+@demoPassword = PASTE-THE-VALUE-FROM-set-dev-secrets
+@partnerKey = PASTE-THE-VALUE-FROM-set-dev-secrets
 @tracking1 = APX-20260001
 @tracking2 = APX-20260002
 
+#################################################################################################################
+### SIGN IN AND SECURITY CASES (version 2)
+#################################################################################################################
+
+### 200: sign in as the admin. The token is used by every request below as {{adminToken}}.
+# @name loginAdmin
+POST {{host}}/api/v2/auth/token
+Content-Type: application/json
+
+{ "userName": "admin", "password": "{{demoPassword}}" }
+
+###
+@adminToken = {{loginAdmin.response.body.$.accessToken}}
+
+### 200: sign in as courier-007. The token carries the claim courierId = courier-007.
+# @name loginCourier
+POST {{host}}/api/v2/auth/token
+Content-Type: application/json
+
+{ "userName": "courier007", "password": "{{demoPassword}}" }
+
+###
+@courierToken = {{loginCourier.response.body.$.accessToken}}
+
+### 401: wrong password (the answer does not say whether the name or the password was wrong)
+POST {{host}}/api/v2/auth/token
+Content-Type: application/json
+
+{ "userName": "admin", "password": "wrong" }
+
+### 400: empty fields
+POST {{host}}/api/v2/auth/token
+Content-Type: application/json
+
+{ "userName": "", "password": "" }
+
+### 401: no token at all
+GET {{host}}/api/v2/shipments
+
+### 401: a token that is not a token
+GET {{host}}/api/v2/shipments
+Authorization: Bearer not.a.token
+
+### 200: a courier may read
+GET {{host}}/api/v2/shipments?pageSize=5
+Authorization: Bearer {{courierToken}}
+
+### 403: a courier may not create shipments (Admin only)
+POST {{host}}/api/v2/shipments
+Authorization: Bearer {{courierToken}}
+Content-Type: application/json
+
+{
+  "trackingNumber": "APX-29999990",
+  "weightKg": 2.5,
+  "recipientName": "Gita Rao",
+  "recipientPhone": "+44 20 7946 0001",
+  "recipientAddress": "7 Mill Road",
+  "recipientCity": "Brightport"
+}
+
+### 403: courier-007 tries to upload scans as courier-008 (the courierId must match the token)
+POST {{host}}/api/v2/shipments/APX-10000003/scans
+Authorization: Bearer {{courierToken}}
+Content-Type: application/json
+
+{
+  "courierId": "courier-008",
+  "scans": [
+    {
+      "scanId": "scan::bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "scanType": "InTransit",
+      "location": "Brightport hub",
+      "scannedAtUtc": "2026-11-10T08:00:00Z"
+    }
+  ]
+}
+
+### 200: the same upload under the courier's own id
+POST {{host}}/api/v2/shipments/APX-10000003/scans
+Authorization: Bearer {{courierToken}}
+Content-Type: application/json
+
+{
+  "courierId": "courier-007",
+  "scans": [
+    {
+      "scanId": "scan::bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "scanType": "InTransit",
+      "location": "Brightport hub",
+      "scannedAtUtc": "2026-11-10T08:00:00Z"
+    }
+  ]
+}
+
+### 200: partner route with the API key (no recipient name, phone or address in the answer)
+GET {{host}}/api/v2/partner/shipments/APX-10000003
+X-Api-Key: {{partnerKey}}
+
+### 401: partner route without a key
+GET {{host}}/api/v2/partner/shipments/APX-10000003
+
+### 401: partner route with a wrong key
+GET {{host}}/api/v2/partner/shipments/APX-10000003
+X-Api-Key: wrong-key
+
+### 401: partner route with a JWT (only the API key is accepted there)
+GET {{host}}/api/v2/partner/shipments/APX-10000003
+Authorization: Bearer {{adminToken}}
+
+### 401: a normal route with an API key (only a token is accepted there)
+GET {{host}}/api/v2/shipments
+X-Api-Key: {{partnerKey}}
+
 ### Not versioned: the old Part B address no longer exists (404)
 GET {{host}}/api/shipments/APX-10000001
+Authorization: Bearer {{adminToken}}
 
 #################################################################################################################
 ### VERSION 1 (deprecated): responses have flat recipient fields and a numeric status. Look for the api-deprecated-versions header.
@@ -18,14 +138,17 @@ GET {{host}}/api/shipments/APX-10000001
 
 ### 200: first page, newest filters
 GET {{host}}/api/v1/shipments?page=1&pageSize=5&status=Created&city=Brightport
+Authorization: Bearer {{adminToken}}
 
 ### 400: page size above 50
 GET {{host}}/api/v1/shipments?pageSize=500
+Authorization: Bearer {{adminToken}}
 
 ### --- POST /api/v1/shipments -----------------------------------------------------------------------------------------
 
 ### 201 + Location header
 POST {{host}}/api/v1/shipments
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -39,6 +162,7 @@ Content-Type: application/json
 
 ### 409: the same tracking number again
 POST {{host}}/api/v1/shipments
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -52,6 +176,7 @@ Content-Type: application/json
 
 ### 400: bad tracking number, weight and phone (ValidationProblemDetails)
 POST {{host}}/api/v1/shipments
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -65,6 +190,7 @@ Content-Type: application/json
 
 ### 415: wrong content type
 POST {{host}}/api/v1/shipments
+Authorization: Bearer {{adminToken}}
 Content-Type: text/plain
 
 hello
@@ -73,14 +199,17 @@ hello
 
 ### 200
 GET {{host}}/api/v1/shipments/{{tracking1}}
+Authorization: Bearer {{adminToken}}
 
 ### 404: unknown tracking number
 GET {{host}}/api/v1/shipments/APX-99999999
+Authorization: Bearer {{adminToken}}
 
 ### --- PUT /api/v1/shipments/{trackingNumber} -------------------------------------------------------------------------
 
 ### 200
 PUT {{host}}/api/v1/shipments/{{tracking1}}
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -93,6 +222,7 @@ Content-Type: application/json
 
 ### 404
 PUT {{host}}/api/v1/shipments/APX-99999999
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -107,18 +237,21 @@ Content-Type: application/json
 
 ### 200: Created -> PickedUp
 PATCH {{host}}/api/v1/shipments/{{tracking1}}/status
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 { "status": "PickedUp" }
 
 ### 409: PickedUp -> Delivered skips two steps
 PATCH {{host}}/api/v1/shipments/{{tracking1}}/status
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 { "status": "Delivered" }
 
 ### 400: unknown status name
 PATCH {{host}}/api/v1/shipments/{{tracking1}}/status
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 { "status": "Teleported" }
@@ -127,6 +260,7 @@ Content-Type: application/json
 
 ### 200: accepted 2 (run it twice: the second time duplicatesSkipped is 2)
 POST {{host}}/api/v1/shipments/{{tracking1}}/scans
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -150,6 +284,7 @@ Content-Type: application/json
 
 ### 400: a Delivered scan without a signature name (custom rule)
 POST {{host}}/api/v1/shipments/{{tracking1}}/scans
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -166,6 +301,7 @@ Content-Type: application/json
 
 ### 200 with rejected: a scan time in the future is rejected, with the reason
 POST {{host}}/api/v1/shipments/{{tracking1}}/scans
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -182,20 +318,25 @@ Content-Type: application/json
 
 ### 200
 GET {{host}}/api/v1/shipments/{{tracking1}}/scans
+Authorization: Bearer {{adminToken}}
 
 ### 404
 GET {{host}}/api/v1/shipments/APX-99999999/scans
+Authorization: Bearer {{adminToken}}
 
 ### --- DELETE /api/v1/shipments/{trackingNumber} ----------------------------------------------------------------------
 
 ### 409: the shipment has left the Created status
 DELETE {{host}}/api/v1/shipments/{{tracking1}}
+Authorization: Bearer {{adminToken}}
 
 ### 204: a shipment that is still Created (seeded in Development)
 DELETE {{host}}/api/v1/shipments/APX-10000002
+Authorization: Bearer {{adminToken}}
 
 ### 404
 DELETE {{host}}/api/v1/shipments/APX-99999999
+Authorization: Bearer {{adminToken}}
 
 #################################################################################################################
 ### VERSION 2: responses have a nested recipient, latestScan and a string status.
@@ -205,14 +346,17 @@ DELETE {{host}}/api/v1/shipments/APX-99999999
 
 ### 200: first page, newest filters
 GET {{host}}/api/v2/shipments?page=1&pageSize=5&status=Created&city=Brightport
+Authorization: Bearer {{adminToken}}
 
 ### 400: page size above 50
 GET {{host}}/api/v2/shipments?pageSize=500
+Authorization: Bearer {{adminToken}}
 
 ### --- POST /api/v2/shipments -----------------------------------------------------------------------------------------
 
 ### 201 + Location header
 POST {{host}}/api/v2/shipments
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -226,6 +370,7 @@ Content-Type: application/json
 
 ### 409: the same tracking number again
 POST {{host}}/api/v2/shipments
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -239,6 +384,7 @@ Content-Type: application/json
 
 ### 400: bad tracking number, weight and phone (ValidationProblemDetails)
 POST {{host}}/api/v2/shipments
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -252,6 +398,7 @@ Content-Type: application/json
 
 ### 415: wrong content type
 POST {{host}}/api/v2/shipments
+Authorization: Bearer {{adminToken}}
 Content-Type: text/plain
 
 hello
@@ -260,14 +407,17 @@ hello
 
 ### 200
 GET {{host}}/api/v2/shipments/{{tracking2}}
+Authorization: Bearer {{adminToken}}
 
 ### 404: unknown tracking number
 GET {{host}}/api/v2/shipments/APX-99999999
+Authorization: Bearer {{adminToken}}
 
 ### --- PUT /api/v2/shipments/{trackingNumber} -------------------------------------------------------------------------
 
 ### 200
 PUT {{host}}/api/v2/shipments/{{tracking2}}
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -280,6 +430,7 @@ Content-Type: application/json
 
 ### 404
 PUT {{host}}/api/v2/shipments/APX-99999999
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -294,18 +445,21 @@ Content-Type: application/json
 
 ### 200: Created -> PickedUp
 PATCH {{host}}/api/v2/shipments/{{tracking2}}/status
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 { "status": "PickedUp" }
 
 ### 409: PickedUp -> Delivered skips two steps
 PATCH {{host}}/api/v2/shipments/{{tracking2}}/status
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 { "status": "Delivered" }
 
 ### 400: unknown status name
 PATCH {{host}}/api/v2/shipments/{{tracking2}}/status
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 { "status": "Teleported" }
@@ -314,6 +468,7 @@ Content-Type: application/json
 
 ### 200: accepted 2 (run it twice: the second time duplicatesSkipped is 2)
 POST {{host}}/api/v2/shipments/{{tracking2}}/scans
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -337,6 +492,7 @@ Content-Type: application/json
 
 ### 400: a Delivered scan without a signature name (custom rule)
 POST {{host}}/api/v2/shipments/{{tracking2}}/scans
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -353,6 +509,7 @@ Content-Type: application/json
 
 ### 200 with rejected: a scan time in the future is rejected, with the reason
 POST {{host}}/api/v2/shipments/{{tracking2}}/scans
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
@@ -369,17 +526,22 @@ Content-Type: application/json
 
 ### 200
 GET {{host}}/api/v2/shipments/{{tracking2}}/scans
+Authorization: Bearer {{adminToken}}
 
 ### 404
 GET {{host}}/api/v2/shipments/APX-99999999/scans
+Authorization: Bearer {{adminToken}}
 
 ### --- DELETE /api/v2/shipments/{trackingNumber} ----------------------------------------------------------------------
 
 ### 409: the shipment has left the Created status
 DELETE {{host}}/api/v2/shipments/{{tracking2}}
+Authorization: Bearer {{adminToken}}
 
 ### 204: a shipment that is still Created (seeded in Development)
 DELETE {{host}}/api/v2/shipments/APX-10000001
+Authorization: Bearer {{adminToken}}
 
 ### 404
 DELETE {{host}}/api/v2/shipments/APX-99999999
+Authorization: Bearer {{adminToken}}

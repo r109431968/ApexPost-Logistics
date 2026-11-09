@@ -8,6 +8,8 @@ public sealed record OutboxResult(int Attempted, int Synced, int Failed);
 /// <summary>
 /// The outbox: it reads the Pending scans from the local store, hands each one to the uploader,
 /// and marks it Synced (accepted) or Failed (rejected, or the upload threw). Only this class changes syncStatus.
+/// An <see cref="UploadUnavailableException"/> (no network, server down) is not a failure of the scan: the run stops
+/// and the scan stays Pending.
 /// </summary>
 public sealed class OutboxService
 {
@@ -40,6 +42,10 @@ public sealed class OutboxService
             catch (OperationCanceledException)
             {
                 throw;
+            }
+            catch (UploadUnavailableException)
+            {
+                break;   // the network or the server is not there: the scan stays Pending and the next run tries again
             }
             catch (Exception)
             {

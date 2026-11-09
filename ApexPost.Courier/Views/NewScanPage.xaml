@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="ApexPost.Courier.Views.NewScanPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:views="clr-namespace:ApexPost.Courier.Views"
+    xmlns:vm="clr-namespace:ApexPost.Courier.ViewModels"
+    x:DataType="vm:NewScanViewModel"
+    Title="New Scan">
+    <Grid RowDefinitions="Auto,*">
+        <views:OfflineBanner Grid.Row="0" />
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="24" Spacing="12" MaximumWidthRequest="560">
+                <Label Text="{Binding CourierText}" FontAttributes="Bold" />
+                <Entry Placeholder="Tracking number" Text="{Binding TrackingNumber}" AutomationId="TrackingNumber" />
+                <Picker Title="Scan type" ItemsSource="{Binding ScanTypes}" SelectedItem="{Binding SelectedScanType}" />
+                <Entry Placeholder="Location" Text="{Binding Location}" AutomationId="Location" />
+                <Entry Placeholder="Recipient signature name (required for Delivered)" Text="{Binding SignatureName}"
+                       IsVisible="{Binding IsDelivered}" AutomationId="SignatureName" />
+                <Editor Placeholder="Notes (optional)" Text="{Binding Notes}" HeightRequest="90" />
+                <Button Text="Save scan" Command="{Binding SaveCommand}" AutomationId="SaveScan" />
+                <Label Text="{Binding Message}" TextColor="{Binding MessageColor}" IsVisible="{Binding HasMessage}" />
+                <Button Text="Sign out" Command="{Binding SignOutCommand}" BackgroundColor="Transparent" TextColor="{StaticResource Primary}" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

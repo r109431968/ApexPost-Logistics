@@ -29,6 +29,15 @@ internal static class ScanDocumentMapper
             document.SetString("notes", scan.Notes);
         }
 
+        if (scan.RecipientSignatureName is null)
+        {
+            document.Remove("recipientSignatureName");
+        }
+        else
+        {
+            document.SetString("recipientSignatureName", scan.RecipientSignatureName);
+        }
+
         document.SetString("syncStatus", scan.SyncStatus.ToString());
     }
 
@@ -40,6 +49,7 @@ internal static class ScanDocumentMapper
         document.GetString("location"),
         document.GetString("scannedAtUtc"),
         document.GetString("notes"),
+        document.GetString("recipientSignatureName"),
         document.GetString("syncStatus"));
 
     public static ShipmentScan Read(Result row) => Build(
@@ -50,11 +60,12 @@ internal static class ScanDocumentMapper
         row.GetString("location"),
         row.GetString("scannedAtUtc"),
         row.GetString("notes"),
+        row.GetString("recipientSignatureName"),
         row.GetString("syncStatus"));
 
     private static ShipmentScan Build(
         string? id, string? trackingNumber, string? scanType, string? courierId,
-        string? location, string? scannedAtUtc, string? notes, string? syncStatus)
+        string? location, string? scannedAtUtc, string? notes, string? recipientSignatureName, string? syncStatus)
     {
         if (id is null || trackingNumber is null || courierId is null || location is null || scannedAtUtc is null)
         {
@@ -81,6 +92,7 @@ internal static class ScanDocumentMapper
             ScannedAtUtc = DateTimeOffset.Parse(
                 scannedAtUtc, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
             Notes = notes,
+            RecipientSignatureName = recipientSignatureName,
             SyncStatus = parsedSyncStatus
         };
     }

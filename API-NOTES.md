@@ -83,3 +83,11 @@ number of scans sent.
   commit count, with an in-memory repository.
 * `ApexPost.Api.http`: one success and one failure request for every endpoint, for both versions.
 * `scripts/smoke-api.ps1 [-Version v1|v2]`: 23 live checks of status codes against a running API.
+
+## Part D: security
+
+* All shipment and scan endpoints require a Bearer token. Roles: Courier (read, status, upload own scans) and Admin (everything). Create, replace and delete are Admin only.
+* The courierId in an upload body must equal the courierId claim of a Courier token; otherwise 403.
+* `GET /api/v2/partner/shipments/{trackingNumber}` accepts only `X-Api-Key`, and returns no recipient personal data.
+* New responses on protected endpoints: 401 (missing or invalid credentials), 403 (wrong role or wrong courier), 429 (too many sign-in attempts).
+* Details and reasoning: SECURITY.md.

@@ -1,0 +1,6 @@
+<Project>
+  <!--
+    Empty on purpose. The solution-level Directory.Build.props forces one TargetFramework (net10.0) and TreatWarningsAsErrors,
+    which does not fit a MAUI project that targets Android and Windows. An empty file here stops the search for a parent file.
+  -->
+</Project>

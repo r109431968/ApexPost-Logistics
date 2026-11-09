@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="ApexPost.Courier.Views.LoginPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:views="clr-namespace:ApexPost.Courier.Views"
+    xmlns:vm="clr-namespace:ApexPost.Courier.ViewModels"
+    x:DataType="vm:LoginViewModel"
+    Title="Sign in">
+    <Grid RowDefinitions="Auto,*">
+        <views:OfflineBanner Grid.Row="0" />
+        <VerticalStackLayout Grid.Row="1" Padding="24" Spacing="14" MaximumWidthRequest="480">
+            <Label Text="ApexPost Courier" FontSize="28" FontAttributes="Bold" />
+            <Label Text="Sign in with your courier account. Signing in needs a connection; scanning does not." />
+            <Entry Placeholder="User name" Text="{Binding UserName}" AutomationId="UserName" />
+            <Entry Placeholder="Password" IsPassword="True" Text="{Binding Password}" AutomationId="Password" ReturnCommand="{Binding SignInCommand}" />
+            <Button Text="Sign in" Command="{Binding SignInCommand}" IsEnabled="{Binding IsNotBusy}" AutomationId="SignIn" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Label Text="{Binding Message}" TextColor="#B3261E" IsVisible="{Binding HasMessage}" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

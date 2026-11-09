@@ -87,7 +87,7 @@ public sealed class CouchbaseScanRepository : IScanRepository
 
     public IReadOnlyList<ShipmentScan> ListAll() => RunScanQuery(
         """
-        SELECT META().id AS id, trackingNumber, scanType, courierId, location, scannedAtUtc, notes, syncStatus
+        SELECT META().id AS id, trackingNumber, scanType, courierId, location, scannedAtUtc, notes, recipientSignatureName, syncStatus
         FROM _
         ORDER BY scannedAtUtc
         """);
@@ -98,7 +98,7 @@ public sealed class CouchbaseScanRepository : IScanRepository
 
         return RunScanQuery(
             """
-            SELECT META().id AS id, trackingNumber, scanType, courierId, location, scannedAtUtc, notes, syncStatus
+            SELECT META().id AS id, trackingNumber, scanType, courierId, location, scannedAtUtc, notes, recipientSignatureName, syncStatus
             FROM _
             WHERE trackingNumber = $trackingNumber
             ORDER BY scannedAtUtc
@@ -108,7 +108,7 @@ public sealed class CouchbaseScanRepository : IScanRepository
 
     public IReadOnlyList<ShipmentScan> ListPending() => RunScanQuery(
         """
-        SELECT META().id AS id, trackingNumber, scanType, courierId, location, scannedAtUtc, notes, syncStatus
+        SELECT META().id AS id, trackingNumber, scanType, courierId, location, scannedAtUtc, notes, recipientSignatureName, syncStatus
         FROM _
         WHERE syncStatus = $syncStatus
         ORDER BY scannedAtUtc
@@ -167,7 +167,7 @@ public sealed class CouchbaseScanRepository : IScanRepository
     {
         using var query = Collection.CreateQuery(
             """
-            SELECT META().id AS id, trackingNumber, scanType, courierId, location, scannedAtUtc, notes, syncStatus
+            SELECT META().id AS id, trackingNumber, scanType, courierId, location, scannedAtUtc, notes, recipientSignatureName, syncStatus
             FROM _
             WHERE trackingNumber = $trackingNumber
             ORDER BY scannedAtUtc

@@ -170,3 +170,20 @@ dotnet run --project ApexPost.Client.Demo                # creates, fetches, upl
 ```
 
 The generated file is never edited by hand. Extra code goes into partial classes or wrappers (`ApexPostClientExtensions.cs`).
+
+## ApexPost.Api: security (Part D)
+
+Every endpoint except the sign-in needs a JWT; roles are `Courier` and `Admin`; a courier can upload scans only under their own `courierId` (403 otherwise); partners read `GET /api/v2/partner/shipments/{trackingNumber}` with an `X-Api-Key`. HTTPS redirection and HSTS are on, and the OpenAPI documents declare the Bearer and ApiKey schemes. Secrets are never committed: run `.\scripts\set-dev-secrets.ps1` once. See [SECURITY.md](SECURITY.md) for the rules, the OAuth 2.0 flows, why API keys are weaker, and TLS.
+
+## ApexPost.Courier: the courier app (Week 4, Part D)
+
+A .NET MAUI app for couriers (Windows and Android). It signs in with the API, records scans in the local Couchbase Lite store (works offline) and sends them in batches of 20 when the server can be reached. Screens: Login, New Scan, Pending Scans, Sync Status. A banner "Server unavailable – working offline" shows when the circuit breaker is open. The code that does not need MAUI is in `ApexPost.Courier.Core` (typed API client, token handler, retry / circuit breaker / timeouts, sync) and has its own tests (`ApexPost.Courier.Core.Tests`). See [RESILIENCE.md](RESILIENCE.md) and [OFFLINE-DESIGN.md](OFFLINE-DESIGN.md).
+
+Run it (two terminals; the courier password is the `Auth:DemoPassword` secret, see `scripts/set-dev-secrets.ps1`):
+
+```powershell
+dotnet run --project ApexPost.Api --launch-profile https
+dotnet run --project ApexPost.Courier -f net10.0-windows10.0.19041.0
+```
+
+The MAUI project is not in `ApexPost.slnx` on purpose: it needs the MAUI workload and the Android SDK. Build it with `dotnet build ApexPost.Courier -f net10.0-windows10.0.19041.0`. On the Android emulator the API is reached at `https://10.0.2.2:7241` (the Debug-only certificate exception is explained in SECURITY.md).

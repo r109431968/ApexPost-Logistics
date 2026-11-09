@@ -1,13 +1,18 @@
 using Asp.Versioning;
 using ApexPost.Api.Contracts;
+using ApexPost.Api.Security;
 using ApexPost.Api.Mapping;
 using ApexPost.Application.Abstractions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApexPost.Api.Controllers;
 
 /// <summary>Scan history and the bulk upload of scans recorded offline (version 1, deprecated).</summary>
 [ApiController]
+[Authorize(Roles = ApiRoles.CourierOrAdmin)]
+[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
 [ApiVersion("1.0", Deprecated = true)]
 [Route("api/v{version:apiVersion}/shipments/{trackingNumber:regex(^APX-\\d{{8}}$)}/scans")]
 [Consumes("application/json")]
@@ -28,8 +33,19 @@ public sealed class ScansController(IParcelService parcels) : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status415UnsupportedMediaType)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<ScanUploadResponse>> Upload(string trackingNumber, ScanUploadRequest request, CancellationToken cancellationToken) =>
-        Ok((await parcels.UploadScansAsync(trackingNumber, request.CourierId, request.ToScanInputs(), cancellationToken)).ToResponse());
+    public async Task<ActionResult<ScanUploadResponse>> Upload(string trackingNumber, ScanUploadRequest request, CancellationToken cancellationToken)
+    {
+        // A courier may only upload scans under their own courierId (taken from the token). Admins may upload for anyone.
+        if (!User.MayUploadFor(request.CourierId))
+        {
+            return Problem(
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "Forbidden",
+                detail: "The courierId in the request is not the courier in your token.");
+        }
+
+        return Ok((await parcels.UploadScansAsync(trackingNumber, request.CourierId, request.ToScanInputs(), cancellationToken)).ToResponse());
+    }
 
     /// <summary>Lists the scans of a shipment, oldest first.</summary>
     /// <param name="trackingNumber">For example APX-12345678.</param>

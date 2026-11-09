@@ -12,6 +12,7 @@
 		<ProjectReference Include="..\ApexPost.Domain\ApexPost.Domain.csproj" />
 		<ProjectReference Include="..\ApexPost.Application\ApexPost.Application.csproj" />
 		<ProjectReference Include="..\ApexPost.Infrastructure\ApexPost.Infrastructure.csproj" />
+		<ProjectReference Include="..\ApexPost.Api\ApexPost.Api.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<Using Include="Xunit" />

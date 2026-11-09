@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="ApexPost.Courier.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:views="clr-namespace:ApexPost.Courier.Views"
+    Shell.FlyoutBehavior="Disabled"
+    Title="ApexPost Courier">
+
+    <ShellContent Title="Sign in" Route="login" ContentTemplate="{DataTemplate views:LoginPage}" />
+
+    <TabBar Route="main">
+        <ShellContent Title="New Scan" Route="newscan" ContentTemplate="{DataTemplate views:NewScanPage}" />
+        <ShellContent Title="Pending Scans" Route="pending" ContentTemplate="{DataTemplate views:PendingScansPage}" />
+        <ShellContent Title="Sync Status" Route="sync" ContentTemplate="{DataTemplate views:SyncStatusPage}" />
+    </TabBar>
+
+</Shell>

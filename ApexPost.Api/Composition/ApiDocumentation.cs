@@ -48,6 +48,7 @@ public static class ApiDocumentation
             {
                 document.Info = CreateInfo("1.0", deprecated: true);
                 UnwrapNullableReferences(document);
+                AddSecurity(document);
                 return Task.CompletedTask;
             });
 
@@ -66,6 +67,7 @@ public static class ApiDocumentation
             {
                 document.Info = CreateInfo("2.0", deprecated: false);
                 UnwrapNullableReferences(document);
+                AddSecurity(document);
                 return Task.CompletedTask;
             });
         });
@@ -95,6 +97,47 @@ public static class ApiDocumentation
                 var reference = oneOf.OfType<OpenApiSchemaReference>().SingleOrDefault();
                 if (reference is not null)
                     schema.Properties[name] = reference;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Describes how to sign in: the Bearer (JWT) scheme for couriers and admins and the X-Api-Key scheme for the partner route.
+    /// Every operation lists the scheme it needs, so Swagger UI shows the padlock and the Authorize button, and generated clients know about it.
+    /// The sign-in endpoint itself needs nothing.
+    /// </summary>
+    private static void AddSecurity(OpenApiDocument document)
+    {
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            Description = "Get a token from POST /api/v2/auth/token and send it as: Authorization: Bearer {token}."
+        };
+        document.Components.SecuritySchemes["ApiKey"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.ApiKey,
+            In = ParameterLocation.Header,
+            Name = "X-Api-Key",
+            Description = "For partner systems on /api/v2/partner/... only."
+        };
+
+        foreach (var (path, item) in document.Paths)
+        {
+            if (item.Operations is null || path.Contains("/auth/token", StringComparison.Ordinal))
+                continue;
+
+            var scheme = path.Contains("/partner/", StringComparison.Ordinal) ? "ApiKey" : "Bearer";
+            foreach (var operation in item.Operations.Values)
+            {
+                operation.Security ??= [];
+                operation.Security.Add(new OpenApiSecurityRequirement
+                {
+                    [new OpenApiSecuritySchemeReference(scheme, document)] = []
+                });
             }
         }
     }

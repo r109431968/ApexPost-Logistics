@@ -8,5 +8,6 @@ namespace ApexPost.Courier.Offline.Abstractions;
 public interface IShipmentUploader
 {
     /// <returns>true when the central system accepted the scan; false when it rejected it.</returns>
+    /// <exception cref="Sync.UploadUnavailableException">The network or the server is not reachable. The scan stays Pending.</exception>
     Task<bool> UploadAsync(ShipmentScan scan, CancellationToken cancellationToken = default);
 }
