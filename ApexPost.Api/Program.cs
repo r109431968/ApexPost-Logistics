@@ -19,9 +19,20 @@ builder.Services
     .AddControllers()
     .AddJsonOptions(options =>
     {
-        // Accept "InTransit" as well as 2 in requests. Responses spell enums as numbers or strings per DTO (see the v1/v2 contracts).
+        // Enums are written and read as text ("InTransit"). Version 1 DTOs expose the status as a number on purpose (see VERSIONING.md).
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
+
+// The OpenAPI generator reads these (minimal API) JSON options, not the MVC ones above, so the enum converter is added here too.
+// Strict numbers: otherwise the generator describes every number as "number or string".
+builder.Services.ConfigureHttpJsonOptions(o =>
+{
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    o.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+});
+
+builder.Services.AddApexPostVersioning();   // /api/v1/... and /api/v2/...
+builder.Services.AddApexPostOpenApi();      // one OpenAPI document per version, built by the .NET generator
 
 // Every error, from validation (400) to a crash (500), is returned as application/problem+json.
 builder.Services.AddProblemDetails();
@@ -40,7 +51,20 @@ app.UseAuthorization();
 app.MapControllers();
 
 if (app.Environment.IsDevelopment())
+{
+    // The documents and the interactive page exist in Development only. Hiding them is not security;
+    // the endpoints themselves are exactly as reachable as before.
+    app.MapOpenApi();            // /openapi/v1.json and /openapi/v2.json
+
+    app.UseSwaggerUI(options =>  // /swagger, reads the documents above
+    {
+        options.DocumentTitle = "ApexPost Logistics API";
+        options.SwaggerEndpoint("/openapi/v2.json", "v2");
+        options.SwaggerEndpoint("/openapi/v1.json", "v1 (deprecated)");
+    });
+
     await app.PrepareAsync();
+}
 
 app.Run();
 

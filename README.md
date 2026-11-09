@@ -134,3 +134,39 @@ user-secrets or environment variables only.
 * Reporting SQL, demos and procedures: `sql/01` to `sql/07`; performance workloads `sql/08` to `sql/10`; least privilege `sql/11`.
 * Execution-plan and timing evidence: [PERFORMANCE.md](PERFORMANCE.md).
 * The Week 2 measurements (cache, `Task.WhenAll`, `SemaphoreSlim`) are in `DESIGN.md`, section 8, produced by `ApexPost.UnitTests/Measurements/MeasurementTests.cs`.
+
+## ApexPost.Api: OpenAPI, Swagger UI and versioning (Week 4, Part C)
+
+Run `dotnet run --project ApexPost.Api` (Development), then open:
+
+* `https://localhost:7241/swagger`: interactive documentation with a dropdown for **v2** and **v1 (deprecated)**
+* `https://localhost:7241/openapi/v1.json` and `https://localhost:7241/openapi/v2.json`: the OpenAPI documents
+
+### OpenAPI specification, the .NET generator and Swagger UI: three different things
+
+| | What it is | In this project |
+|---|---|---|
+| **OpenAPI specification** | A standard, language-neutral file format (JSON) that describes an HTTP API: paths, parameters, request and response shapes, status codes. It is a *description*, not code | `/openapi/v1.json` and `/openapi/v2.json`, also saved in `/contracts` |
+| **Built-in .NET generator** | The code that *writes* that description by reading our controllers, attributes (`[ProducesResponseType]`, `[Tags]`, `[EndpointSummary]`), XML comments and API version groups | `Microsoft.AspNetCore.OpenApi`: `AddOpenApi("v1")`, `AddOpenApi("v2")` and `MapOpenApi()` |
+| **Swagger UI** | A web page that *reads* an OpenAPI document and shows it as browsable documentation with a "Try it out" button. It does not create the document | `Swashbuckle.AspNetCore.SwaggerUI` at `/swagger`, pointed at the two documents above |
+
+Only one generator runs. We deliberately did not add the full Swashbuckle generator (`AddSwaggerGen`): it would build a second,
+slightly different document from the same controllers. Swashbuckle is used here for its UI package only.
+The documents and Swagger UI are mapped in Development only. Hiding them is not security: the endpoints themselves are exactly
+as reachable as before, and real protection (authentication) comes in Part D.
+
+### Versions
+
+`/api/v1/...` (deprecated) and `/api/v2/...` are described in [VERSIONING.md](VERSIONING.md); every endpoint, status code and route name is in
+[API-NOTES.md](API-NOTES.md).
+
+### Generated client and console consumer
+
+```
+dotnet run --project ApexPost.Api                       # terminal 1
+.\scripts\export-contracts.ps1                          # saves contracts/v1.json and contracts/v2.json
+.\scripts\generate-client.ps1                           # NSwag: contracts/v2.json -> ApexPost.Client/Generated/ApexPostClient.g.cs
+dotnet run --project ApexPost.Client.Demo                # creates, fetches, uploads two scans, handles a 404
+```
+
+The generated file is never edited by hand. Extra code goes into partial classes or wrappers (`ApexPostClientExtensions.cs`).

@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using ApexPost.Api.Contracts;
 using ApexPost.Api.Mapping;
 using ApexPost.Application.Abstractions;
@@ -5,9 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ApexPost.Api.Controllers;
 
-/// <summary>Scan history and the bulk upload of scans recorded offline.</summary>
+/// <summary>Scan history and the bulk upload of scans recorded offline (version 1, deprecated).</summary>
 [ApiController]
-[Route("api/shipments/{trackingNumber:regex(^APX-\\d{{8}}$)}/scans")]
+[ApiVersion("1.0", Deprecated = true)]
+[Route("api/v{version:apiVersion}/shipments/{trackingNumber:regex(^APX-\\d{{8}}$)}/scans")]
 [Consumes("application/json")]
 [Produces("application/json")]
 [Tags("Scans")]

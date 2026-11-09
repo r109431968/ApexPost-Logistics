@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using ApexPost.Api.Contracts;
 using ApexPost.Api.Mapping;
 using ApexPost.Application.Abstractions;
@@ -6,13 +7,14 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ApexPost.Api.Controllers;
 
-/// <summary>Create, read, change and delete shipments.</summary>
+/// <summary>Create, read, change and delete shipments (version 1, deprecated).</summary>
 /// <remarks>
 /// Controllers only bind the input, call <see cref="IParcelService"/> and return an HTTP result.
 /// Every business rule (transitions, duplicates, delete rule) lives in the service.
 /// </remarks>
 [ApiController]
-[Route("api/shipments")]
+[ApiVersion("1.0", Deprecated = true)]
+[Route("api/v{version:apiVersion}/shipments")]
 [Consumes("application/json")]
 [Produces("application/json")]
 [Tags("Shipments")]
@@ -58,7 +60,7 @@ public sealed class ShipmentsController(IParcelService parcels) : ControllerBase
     public async Task<ActionResult<ShipmentResponse>> Create(CreateShipmentRequest request, CancellationToken cancellationToken)
     {
         var created = await parcels.CreateAsync(request.ToNewParcel(), cancellationToken);
-        return CreatedAtAction(nameof(Get), new { trackingNumber = created.TrackingNumber }, created.ToResponse());
+        return CreatedAtRoute("GetShipment", new { version = "1", trackingNumber = created.TrackingNumber }, created.ToResponse());
     }
 
     /// <summary>Replaces the editable details of a shipment (not the tracking number, not the status).</summary>
