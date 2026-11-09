@@ -7,6 +7,8 @@
   <Project Path="ApexPost.Infrastructure/ApexPost.Infrastructure.csproj" />
   <Project Path="ApexPost.Web/ApexPost.Web.csproj" />
   <Project Path="ApexPost.Api/ApexPost.Api.csproj" />
+  <Project Path="ApexPost.Client/ApexPost.Client.csproj" />
+  <Project Path="ApexPost.Client.Demo/ApexPost.Client.Demo.csproj" />
   <Project Path="ApexPost.UnitTests/ApexPost.UnitTests.csproj" />
   <Project Path="ApexPost.IntegrationTests/ApexPost.IntegrationTests.csproj" />
 </Solution>

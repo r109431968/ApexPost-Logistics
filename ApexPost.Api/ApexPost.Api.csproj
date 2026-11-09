@@ -5,7 +5,20 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- CS1591 = "missing XML comment". Every public controller action and DTO is documented; the rest is not published. -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!--
+      AV0029 / AV0030 are advice from Asp.Versioning: use its own AddOpenApi() / MapOpenApi().WithDocumentPerVersion() helpers.
+      This project follows the task instead: the built-in AddOpenApi("v1") / AddOpenApi("v2") plus MapOpenApi(), with the document
+      name equal to the API Explorer group name. The documents are checked in /contracts, so the advice is not needed.
+    -->
+    <NoWarn>$(NoWarn);AV0029;AV0030</NoWarn>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Built-in OpenAPI generator (the document), API versioning, and Swagger UI only (no Swashbuckle generator). -->
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
+    <PackageReference Include="Asp.Versioning.Mvc" Version="10.2.1" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.2.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.3.1" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ApexPost.Application\ApexPost.Application.csproj" />
     <ProjectReference Include="..\ApexPost.Infrastructure\ApexPost.Infrastructure.csproj" />

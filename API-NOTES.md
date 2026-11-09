@@ -1,8 +1,10 @@
-# API-NOTES: ApexPost.Api (Week 4, Part B)
+# API-NOTES: ApexPost.Api (Week 4, Parts B and C)
 
 `ApexPost.Api` is a REST API for shipments and their scans. It uses the same SQL Server database, `ApexPostDbContext`,
 unit of work and layering as the Week 3 application. Controllers only bind input, call `IParcelService` and return an
 HTTP result; every rule is in `ParcelService` and `ParcelTransitions`.
+
+**Versions (Part C).** Every route below exists twice: `/api/v1/...` (deprecated) and `/api/v2/...`. In the table, replace `/api/` by `/api/v1/` or `/api/v2/`. The route name of the v2 action has a `V2` suffix (`CreateShipmentV2`). The v2 response shape is in [VERSIONING.md](VERSIONING.md).
 
 Run it: `dotnet run --project ApexPost.Api` (https://localhost:7241). The connection string is the same user-secret as
 `ApexPost.Web` (`ConnectionStrings:ApexPostDb`); nothing secret is in a committed file. In Development the API applies the
@@ -79,4 +81,5 @@ number of scans sent.
 
 * `ApexPost.UnitTests/Parcels/ParcelServiceTests.cs`: transitions, duplicates, delete rule, paging and filter, idempotent upload,
   commit count, with an in-memory repository.
-* `ApexPost.Api.http`: one success and one failure request for every endpoint.
+* `ApexPost.Api.http`: one success and one failure request for every endpoint, for both versions.
+* `scripts/smoke-api.ps1 [-Version v1|v2]`: 23 live checks of status codes against a running API.
