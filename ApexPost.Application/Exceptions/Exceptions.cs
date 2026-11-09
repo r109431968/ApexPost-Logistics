@@ -66,3 +66,9 @@ public sealed class ExternalServiceTimeoutException : ExternalServiceException
     {
     }
 }
+
+/// <summary>
+/// A parcel request is well formed but not allowed in the current state: a duplicate tracking number, a status change
+/// that skips a step, or deleting a parcel that has already left. The API answers 409 Conflict.
+/// </summary>
+public sealed class ParcelConflictException(string message) : Exception(message);

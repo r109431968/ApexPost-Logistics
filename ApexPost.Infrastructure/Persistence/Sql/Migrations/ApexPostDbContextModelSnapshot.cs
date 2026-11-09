@@ -372,6 +372,139 @@ namespace ApexPost.Infrastructure.Persistence.Sql.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Sql.Entities.ParcelEntity", b =>
+                {
+                    b.Property<string>("TrackingNumber")
+                        .HasMaxLength(12)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(12)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("LastChangedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RecipientAddress")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RecipientCity")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("RecipientName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("RecipientPhone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<DateTime>("RegisteredAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("WeightKg")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.HasKey("TrackingNumber");
+
+                    b.HasIndex("Status", "RecipientCity");
+
+                    b.ToTable("Parcels", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Parcels_Status", "[Status] BETWEEN 0 AND 5");
+
+                            t.HasCheckConstraint("CK_Parcels_Weight", "[WeightKg] >= 0.1 AND [WeightKg] <= 70");
+                        });
+                });
+
+            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Sql.Entities.ParcelScanEntity", b =>
+                {
+                    b.Property<string>("ScanId")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("CourierId")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("ReceivedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RecipientSignatureName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("ScanType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ScannedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TrackingNumber")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(12)");
+
+                    b.HasKey("ScanId");
+
+                    b.HasIndex("TrackingNumber", "ScannedAtUtc");
+
+                    b.ToTable("ParcelScans", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ParcelScans_ScanType", "[ScanType] BETWEEN 0 AND 3");
+                        });
+                });
+
             modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Sql.Entities.PaymentEntity", b =>
                 {
                     b.Property<Guid>("TransactionId")
@@ -932,6 +1065,17 @@ namespace ApexPost.Infrastructure.Persistence.Sql.Migrations
                     b.Navigation("Line");
                 });
 
+            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Sql.Entities.ParcelScanEntity", b =>
+                {
+                    b.HasOne("ApexPost.Infrastructure.Persistence.Sql.Entities.ParcelEntity", "Parcel")
+                        .WithMany("Scans")
+                        .HasForeignKey("TrackingNumber")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Parcel");
+                });
+
             modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Sql.Entities.PaymentEntity", b =>
                 {
                     b.HasOne("ApexPost.Infrastructure.Persistence.Sql.Entities.CounterTransactionEntity", "Transaction")
@@ -1038,6 +1182,11 @@ namespace ApexPost.Infrastructure.Persistence.Sql.Migrations
                     b.Navigation("Payment");
 
                     b.Navigation("Verification");
+                });
+
+            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Sql.Entities.ParcelEntity", b =>
+                {
+                    b.Navigation("Scans");
                 });
 
             modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Sql.Entities.ShippingZoneEntity", b =>

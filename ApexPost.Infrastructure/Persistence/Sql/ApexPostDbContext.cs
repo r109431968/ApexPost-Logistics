@@ -32,6 +32,8 @@ public sealed class ApexPostDbContext(DbContextOptions<ApexPostDbContext> option
     public DbSet<PaymentEntity> Payments => Set<PaymentEntity>();
     public DbSet<IdentityVerificationEntity> IdentityVerifications => Set<IdentityVerificationEntity>();
     public DbSet<AuditEntryEntity> AuditEntries => Set<AuditEntryEntity>();
+    public DbSet<ParcelEntity> Parcels => Set<ParcelEntity>();
+    public DbSet<ParcelScanEntity> ParcelScans => Set<ParcelScanEntity>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

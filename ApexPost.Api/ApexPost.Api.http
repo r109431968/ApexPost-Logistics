@@ -1,0 +1,188 @@
+### ApexPost.Api, Part B. Start the API first:  dotnet run --project ApexPost.Api
+### Every request has a success case and a failure case. Run them from top to bottom.
+
+@host = https://localhost:7241
+@tracking = APX-20260001
+
+### --- GET /api/shipments ------------------------------------------------------------------------------------------
+
+### 200: first page, newest filters
+GET {{host}}/api/shipments?page=1&pageSize=5&status=Created&city=Brightport
+
+### 400: page size above 50
+GET {{host}}/api/shipments?pageSize=500
+
+### --- POST /api/shipments -----------------------------------------------------------------------------------------
+
+### 201 + Location header
+POST {{host}}/api/shipments
+Content-Type: application/json
+
+{
+  "trackingNumber": "{{tracking}}",
+  "weightKg": 2.5,
+  "recipientName": "Gita Rao",
+  "recipientPhone": "+44 20 7946 0001",
+  "recipientAddress": "7 Mill Road",
+  "recipientCity": "Brightport"
+}
+
+### 409: the same tracking number again
+POST {{host}}/api/shipments
+Content-Type: application/json
+
+{
+  "trackingNumber": "{{tracking}}",
+  "weightKg": 2.5,
+  "recipientName": "Gita Rao",
+  "recipientPhone": "+44 20 7946 0001",
+  "recipientAddress": "7 Mill Road",
+  "recipientCity": "Brightport"
+}
+
+### 400: bad tracking number, weight and phone (ValidationProblemDetails)
+POST {{host}}/api/shipments
+Content-Type: application/json
+
+{
+  "trackingNumber": "BAD-1",
+  "weightKg": 99,
+  "recipientName": "",
+  "recipientPhone": "abc",
+  "recipientAddress": "7 Mill Road",
+  "recipientCity": "Brightport"
+}
+
+### 415: wrong content type
+POST {{host}}/api/shipments
+Content-Type: text/plain
+
+hello
+
+### --- GET /api/shipments/{trackingNumber} -------------------------------------------------------------------------
+
+### 200
+GET {{host}}/api/shipments/{{tracking}}
+
+### 404: unknown tracking number
+GET {{host}}/api/shipments/APX-99999999
+
+### --- PUT /api/shipments/{trackingNumber} -------------------------------------------------------------------------
+
+### 200
+PUT {{host}}/api/shipments/{{tracking}}
+Content-Type: application/json
+
+{
+  "weightKg": 3.1,
+  "recipientName": "Gita Rao",
+  "recipientPhone": "+44 20 7946 0001",
+  "recipientAddress": "9 Mill Road",
+  "recipientCity": "Brightport"
+}
+
+### 404
+PUT {{host}}/api/shipments/APX-99999999
+Content-Type: application/json
+
+{
+  "weightKg": 3.1,
+  "recipientName": "Gita Rao",
+  "recipientPhone": "+44 20 7946 0001",
+  "recipientAddress": "9 Mill Road",
+  "recipientCity": "Brightport"
+}
+
+### --- PATCH /api/shipments/{trackingNumber}/status ----------------------------------------------------------------
+
+### 200: Created -> PickedUp
+PATCH {{host}}/api/shipments/{{tracking}}/status
+Content-Type: application/json
+
+{ "status": "PickedUp" }
+
+### 409: PickedUp -> Delivered skips two steps
+PATCH {{host}}/api/shipments/{{tracking}}/status
+Content-Type: application/json
+
+{ "status": "Delivered" }
+
+### 400: unknown status name
+PATCH {{host}}/api/shipments/{{tracking}}/status
+Content-Type: application/json
+
+{ "status": "Teleported" }
+
+### --- POST/GET /api/shipments/{trackingNumber}/scans --------------------------------------------------------------
+
+### 200: accepted 2 (run it twice: the second time duplicatesSkipped is 2)
+POST {{host}}/api/shipments/{{tracking}}/scans
+Content-Type: application/json
+
+{
+  "courierId": "courier-007",
+  "scans": [
+    {
+      "scanId": "scan::aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "scanType": "InTransit",
+      "location": "Brightport hub",
+      "scannedAtUtc": "2026-11-10T08:00:00Z"
+    },
+    {
+      "scanId": "scan::bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "scanType": "InTransit",
+      "location": "Northvale depot",
+      "scannedAtUtc": "2026-11-10T09:00:00Z",
+      "notes": "Sorted"
+    }
+  ]
+}
+
+### 400: a Delivered scan without a signature name (custom rule)
+POST {{host}}/api/shipments/{{tracking}}/scans
+Content-Type: application/json
+
+{
+  "courierId": "courier-007",
+  "scans": [
+    {
+      "scanId": "scan::cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      "scanType": "Delivered",
+      "location": "Brightport",
+      "scannedAtUtc": "2026-11-10T10:00:00Z"
+    }
+  ]
+}
+
+### 200 with rejected: a scan time in the future is rejected, with the reason
+POST {{host}}/api/shipments/{{tracking}}/scans
+Content-Type: application/json
+
+{
+  "courierId": "courier-007",
+  "scans": [
+    {
+      "scanId": "scan::dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      "scanType": "InTransit",
+      "location": "Brightport",
+      "scannedAtUtc": "2099-01-01T00:00:00Z"
+    }
+  ]
+}
+
+### 200
+GET {{host}}/api/shipments/{{tracking}}/scans
+
+### 404
+GET {{host}}/api/shipments/APX-99999999/scans
+
+### --- DELETE /api/shipments/{trackingNumber} ----------------------------------------------------------------------
+
+### 409: the shipment has left the Created status
+DELETE {{host}}/api/shipments/{{tracking}}
+
+### 204: a shipment that is still Created (seeded in Development)
+DELETE {{host}}/api/shipments/APX-10000002
+
+### 404
+DELETE {{host}}/api/shipments/APX-99999999

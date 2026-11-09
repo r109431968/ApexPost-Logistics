@@ -19,6 +19,7 @@ application interfaces that Week 2 used for JSON files, so the business rules di
 |`ApexPost.Application`|Use cases (checkout, reversal, reports, login, staff, price revision...), interfaces (ports) including `IRepository` and `IUnitOfWork`, specifications, validation, extension members.|
 |`ApexPost.Infrastructure`|EF Core `ApexPostDbContext`, entity configurations, migrations, repositories, `UnitOfWork`, stored-procedure services, SQL audit and credential stores, seeding, cache, simulated courier.|
 |`ApexPost.Web`|MVC controllers and views, middleware, filters, composition root (`Program.cs`).|
+|`ApexPost.Api`|Week 4 REST API for shipments and scans (`/api/shipments`), built on the same database, unit of work and services. See [API-NOTES.md](API-NOTES.md). Run: `dotnet run --project ApexPost.Api`.|
 |`ApexPost.UnitTests`|xUnit tests with in-memory fakes and a spy unit of work (business rules, pricing, tax, price revision, cache, courier).|
 |`ApexPost.IntegrationTests`|`WebApplicationFactory` tests against a **disposable SQL Server test database** (pipeline, security, audit, seeding, transactions, concurrency, N+1, stored procedures).|
 
