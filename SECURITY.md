@@ -102,3 +102,12 @@ It exists because the ASP.NET Core **development certificate** is not trusted by
 2. `.\scripts\smoke-api.ps1` and `.\scripts\smoke-api.ps1 -Version v1`: includes 401 (no, bad or wrong-kind credentials), 403 (courier creating, courier uploading as another courier) and the partner cases.
 3. `ApexPost.Api/ApexPost.Api.http`: the same cases one by one, with the answers visible.
 4. `dotnet test`: `ApexPost.UnitTests/Api/ApiSecurityTests.cs` covers the token claims, signature/audience/expiry checks, the courierId rule, the demo users, the key comparison and the signing-key rules.
+
+## 8. The courier app (ApexPost.Courier)
+
+* **Token storage.** The access token is kept only in MAUI `SecureStorage` (Android Keystore, Windows data protection), never in Preferences, files or logs. If the device store cannot be used (for example some unpackaged Windows setups) the token stays in memory for that run only, and the courier signs in again next time. The password is cleared from the form right after sign-in and is never stored.
+* **401.** `AuthHeaderHandler` attaches the token to every call except the sign-in. On a `401` it deletes the token and the app shows the Login page; scans that are still `Pending` stay on the device.
+* **What is logged.** Retry attempts, circuit breaker changes and sync runs. Tokens, API keys, passwords and request bodies are never logged.
+* **The `#if DEBUG` certificate exception.** In `MauiProgram.cs` the Debug build accepts certificate errors only for requests to `localhost`, `127.0.0.1` and `10.0.2.2` (the Android emulator's address for the PC), because the ASP.NET Core development certificate is not trusted there. In a Release build this code does not exist, so certificate validation is never switched off in Release.
+* **No secrets in the app.** The app contains only the development addresses of the local API. The demo password is typed by the user and is not in the repository.
+* **A courier account is required.** The app refuses a token without a `courierId` claim (for example an Admin token), so it cannot record scans under a made-up courier.
