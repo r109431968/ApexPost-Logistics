@@ -148,10 +148,12 @@ Run `dotnet run --project ApexPost.Api` (Development), then open:
 |---|---|---|
 | **OpenAPI specification** | A standard, language-neutral file format (JSON) that describes an HTTP API: paths, parameters, request and response shapes, status codes. It is a *description*, not code | `/openapi/v1.json` and `/openapi/v2.json`, also saved in `/contracts` |
 | **Built-in .NET generator** | The code that *writes* that description by reading our controllers, attributes (`[ProducesResponseType]`, `[Tags]`, `[EndpointSummary]`), XML comments and API version groups | `Microsoft.AspNetCore.OpenApi`: `AddOpenApi("v1")`, `AddOpenApi("v2")` and `MapOpenApi()` |
-| **Swagger UI** | A web page that *reads* an OpenAPI document and shows it as browsable documentation with a "Try it out" button. It does not create the document | `Swashbuckle.AspNetCore.SwaggerUI` at `/swagger`, pointed at the two documents above |
+| **Swagger UI** | A web page that *reads* an OpenAPI document and shows it as browsable documentation with a "Try it out" button. It does not create the document | The Swagger UI script, shown at `/swagger` by a small page in `ApexPost.Api/Composition/SwaggerPage.cs`, with buttons for **v2** and **v1 (deprecated)** that load the two documents above (see the note below) |
 
 Only one generator runs. We deliberately did not add the full Swashbuckle generator (`AddSwaggerGen`): it would build a second,
 slightly different document from the same controllers. Swashbuckle is used here for its UI package only.
+
+**Note on how `/swagger` is served (changed in Part D).** After Part D every endpoint needs a signed-in user (a fallback authorization policy, secure by default). The UI middleware of the Swashbuckle package was answered with `401` by that rule, so the page itself could not be opened. The page is therefore served by one anonymous endpoint (`MapGet("/swagger")`, Development only) that loads the same Swagger UI script and the two OpenAPI documents from the same address. The page is only HTML and script: every call made from it is still checked, so use its **Authorize** button with a token from `POST /api/v2/auth/token`. The `Swashbuckle.AspNetCore.SwaggerUI` package reference is kept; no second document generator is added. The embedded Swagger UI version reads OpenAPI 3.0.0 to 3.0.3, so the page lowers the `openapi` field of the 3.0.4 document to 3.0.3 in the browser (the document served by the API is not changed).
 The documents and Swagger UI are mapped in Development only. Hiding them is not security: the endpoints themselves are exactly
 as reachable as before, and real protection (authentication) comes in Part D.
 
