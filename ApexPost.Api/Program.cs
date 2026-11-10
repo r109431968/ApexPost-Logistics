@@ -78,12 +78,9 @@ if (app.Environment.IsDevelopment())
     // the endpoints themselves are exactly as reachable as before.
     app.MapOpenApi().AllowAnonymous();   // /openapi/v1.json and /openapi/v2.json (the fallback policy would otherwise ask for a token)
 
-    app.UseSwaggerUI(options =>  // /swagger, reads the documents above
-    {
-        options.DocumentTitle = "ApexPost Logistics API";
-        options.SwaggerEndpoint("/openapi/v2.json", "v2");
-        options.SwaggerEndpoint("/openapi/v1.json", "v1 (deprecated)");
-    });
+    // /swagger: the interactive page. It is only HTML and script (loaded from a CDN) and reads the two documents above from the same address,
+    // so it is open (AllowAnonymous); every call it makes is still checked: use its Authorize button with a token from /api/v2/auth/token.
+    app.MapGet("/swagger", () => Results.Content(SwaggerPage.Html, "text/html")).AllowAnonymous().ExcludeFromDescription();
 
     await app.PrepareAsync();
 }
