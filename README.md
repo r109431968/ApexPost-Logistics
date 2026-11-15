@@ -214,4 +214,15 @@ dotnet test ApexPost.slnx
 ```
 
 Run one level: `dotnet test ApexPost.UnitTests`, `dotnet test ApexPost.Api.IntegrationTests`, `dotnet test ApexPost.Specs`.
+**Last full run (`dotnet test ApexPost.slnx`, 2026-11-15): 364 passed, 0 failed, 0 skipped.**
+
+|Project|Passed|Failed|Skipped|
+|-|-|-|-|
+|`ApexPost.UnitTests`|177|0|0|
+|`ApexPost.IntegrationTests`|73|0|0|
+|`ApexPost.Courier.Offline.Tests`|48|0|0|
+|`ApexPost.Courier.Core.Tests`|47|0|0|
+|`ApexPost.Specs` (BDD)|15|0|0|
+|`ApexPost.Api.IntegrationTests`|4|0|0|
+
 The output of the last full run is in [docs/week5/test-run.log](docs/week5/test-run.log). Proof that the tests can fail: `scripts/prove-tests-can-fail.ps1` and `docs/week5/mutation-proof.log`.

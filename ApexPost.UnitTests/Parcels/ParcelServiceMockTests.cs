@@ -1,4 +1,4 @@
-﻿using ApexPost.Application.Abstractions;
+using ApexPost.Application.Abstractions;
 using ApexPost.Application.Exceptions;
 using ApexPost.Application.Parcels;
 using ApexPost.Application.Services;
@@ -18,6 +18,7 @@ namespace ApexPost.UnitTests.Parcels;
 ///
 /// The repository mock is Strict: a call that was not set up fails the test, so an unexpected extra call is caught.
 /// </summary>
+// Written by hand with Moq. Three tests are marked "Copilot-assisted" below; they were drafted by GitHub Copilot (see COPILOT-LOG.md).
 public class ParcelServiceMockTests
 {
     private const string Tracking = "APX-12345678";
@@ -178,6 +179,7 @@ public class ParcelServiceMockTests
         Assert.Contains("Delivered", rejection.Reason);
     }
 
+    // Copilot-assisted (GitHub Copilot Chat, 2026-11-15): drafted by Copilot, then reviewed, repaired where needed and mutation-tested by hand. See COPILOT-LOG.md.
     [Fact]
     public async Task UploadScans_DeliveredScanReachesFinalStatus_RejectsSubsequentScan()
     {
@@ -268,6 +270,7 @@ public class ParcelServiceMockTests
         _unitOfWork.Verify(work => work.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    // Copilot-assisted (GitHub Copilot Chat, 2026-11-15): drafted by Copilot, then reviewed, repaired where needed and mutation-tested by hand. See COPILOT-LOG.md.
     [Fact]
     public async Task Delete_CreatedParcel_DeletesAndCommitsOnce()
     {
@@ -284,6 +287,7 @@ public class ParcelServiceMockTests
         _unitOfWork.Verify(work => work.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    // Copilot-assisted (GitHub Copilot Chat, 2026-11-15): drafted by Copilot, then reviewed, repaired where needed and mutation-tested by hand. See COPILOT-LOG.md.
     [Fact]
     public async Task Delete_NonCreatedParcel_ThrowsConflictAndDoesNotPersist()
     {

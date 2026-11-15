@@ -5,6 +5,7 @@ using Reqnroll;
 
 namespace ApexPost.Specs.Steps;
 
+// Copilot-assisted (GitHub Copilot Chat, 2026-11-15): drafted by Copilot, then reviewed, repaired where needed and mutation-tested by hand. See COPILOT-LOG.md.
 [Binding]
 public sealed class ParcelStatusTrackingSteps(ApiContext api)
 {

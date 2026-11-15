@@ -8,7 +8,7 @@ namespace ApexPost.Courier.Core.Tests;
 public class ResilienceTests
 {
     private static readonly IReadOnlyList<ScanItemDto> Scans =
-        [new("scan::3f2504e0-4f89-41d3-9a0c-0305e82c3301", "Pickup", "Depot", DateTimeOffset.UtcNow, null, null)];
+        [new("scan::3f2504e0-4f89-41d3-9a0c-0305e82c3301", "Pickup", "Depot", new DateTimeOffset(2026, 11, 10, 9, 0, 0, TimeSpan.Zero), null, null)];
 
     private static Task<ApiResult<ScanUploadResponseDto>> Upload(Harness harness) =>
         harness.Client.UploadScansAsync("APX-12345678", "courier-007", Scans);

@@ -52,6 +52,16 @@ Actual:   2
 The scan after the Delivered scan was wrongly accepted, and the test caught it. The code was restored with `git checkout` (no change left in `git status`).
 My first attempt, `if (false)`, did not even build: the project treats the "unreachable code" warning as an error. That is why the mutation had to be written so that it compiles.
 
+### More proof that generated tests can fail (scripted)
+
+`scripts/prove-tests-can-fail.ps1` breaks the production code on purpose, runs only the matching tests, expects them to FAIL, and restores the code. Besides the manual proof above, it proves three more things; the result of every mutation is in `docs/week5/mutation-proof.log`:
+
+| Mutation (production code) | Copilot-assisted test that must fail |
+|---|---|
+| Final-status check in `UploadScansAsync` never fires | `UploadScans_DeliveredScanReachesFinalStatus_RejectsSubsequentScan` |
+| `DeleteAsync` also allows a `PickedUp` shipment | `Delete_NonCreatedParcel_ThrowsConflictAndDoesNotPersist` |
+| `ChangeStatusAsync` no longer saves the new status | the Copilot-written BDD scenarios in `ParcelStatusTracking.feature` |
+
 ## Task B: Copilot writes a Gherkin feature and its steps
 
 | Item | Entry |

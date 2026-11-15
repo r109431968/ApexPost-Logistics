@@ -42,3 +42,10 @@ Result: the first six tests stay green without any change, which proves the refa
 ## What I learned
 
 The boundary tests (20000 g and 20001 g) are the ones that matter most: they catch `>` written as `>=`. `scripts/prove-tests-can-fail.ps1` does exactly this mutation and the suite fails.
+
+## Production code changed to make it testable, and why
+
+* `ShippingPricer` already received `ShippingSettings` through its constructor, and the zone and the weight as parameters. So no interface had to be extracted and no `TimeProvider` was needed: the rule is a pure calculation that is easy to test.
+* The only production change for the rule itself was in the REFACTOR step: the threshold (20 kg) and the amount (15.00) moved out of the code into `ShippingSettings`. This makes them testable with a different value (the three configuration tests) and changeable without a new release.
+* Related earlier design that made the tests possible: `ParcelService` takes `IParcelRepository`, `IUnitOfWork` and `IClock` through its constructor, so the Moq tests can replace all three and use a fixed date.
+* Production bug fixed outside the TDD cycle, found by a boundary test: the `ScanId` error message used `{guid}`, which DataAnnotations treats as a format placeholder. See `TESTING-STRATEGY.md`, section 12.

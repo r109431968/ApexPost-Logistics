@@ -30,6 +30,8 @@ Roughly 65 percent unit tests, 25 percent integration tests, 10 percent BDD scen
 
 The base is wide because unit tests are fast and tell exactly which rule broke. The top is narrow because BDD and integration tests are slower and fail for more reasons.
 
+Actual numbers at the end of week 5 (364 tests): about 75 percent unit level (177 in `ApexPost.UnitTests`, 47 in `Courier.Core.Tests`, 48 in `Courier.Offline.Tests`, some of which use the real embedded store), about 21 percent integration (73 Web and 4 API tests on SQL Server), and 4 percent BDD (15 scenarios). This is close to the plan, with slightly fewer BDD scenarios because each one is broad and slow.
+
 ## 3. Framework choice: xUnit, one framework for the whole solution
 
 | Reason | Explanation |
@@ -77,16 +79,30 @@ Reason: InMemory ignores unique indexes, foreign keys, `rowversion` and transact
 
 ## 7. Review of the existing tests
 
-| Project | Level | Verdict | What was done in week 5 |
-|---|---|---|---|
-| `ApexPost.UnitTests` | Unit, hand-written fakes | Good coverage of rules, pricing, tax, security and caching. Some tests used `DateTimeOffset.UtcNow`, which is safe here only because the same value is passed to the code under test | Added Moq tests for `ParcelService`, boundary Theory tests for API requests, TDD for the heavy parcel surcharge |
-| `ApexPost.Courier.Core.Tests` | Unit, fake HTTP handler | Already covered 200, 404, 500, timeout and ProblemDetails with the real Polly pipeline | Added the missing case: caller cancellation is not treated as a server failure |
-| `ApexPost.Courier.Offline.Tests` | Unit and integration (real embedded Couchbase Lite) | Good; no mock of the outbox service existed | Added Moq tests of the outbox decisions |
-| `ApexPost.IntegrationTests` (Web) | Integration with SQL Server | Good; slow by design | Left as it is |
-| (new) `ApexPost.Api.IntegrationTests` | Integration, API through the real pipeline | Did not exist | Added, because the Web and Api projects both define `Program` and cannot share one test project |
-| (new) `ApexPost.Specs` | BDD with Reqnroll | Did not exist | Added |
+One row per existing test class. Nothing was removed and nothing was replaced: every old class still fits the strategy. New tests were added next to the old ones, not instead of them.
 
-Known weakness, kept honest: a few older tests still call `DateTimeOffset.UtcNow` when they build sample data. They do not depend on the date of the run, but a fixed date would be cleaner. This is listed as future work, not hidden.
+| Test class | Level | Decision | Reason |
+|---|---|---|---|
+| `WeightLimitRuleTests` | Unit (Theory, boundaries) | Kept | Already parameterised with boundary values |
+| `ExtensionAndValidationTests` | Unit (Theory) | Kept | Cheap, deterministic, covers input rules |
+| `PricingAndTaxTests` | Unit (Theory) | Kept, complemented | Still correct. The heavy parcel rule was added test-first in `HeavyParcelSurchargeTests` and `HeavyParcelSurchargeConfigurationTests` |
+| `TransactionRulesTests`, `StockRuleTests`, `MoneyOrderVerificationTests` | Unit (domain rules) | Kept | Pure domain logic, no dependencies |
+| `PriceRevisionServiceTests`, `IdentityVerificationServiceTests` | Unit (hand-written fakes) | Kept | State-based tests with in-memory fakes; a different technique from Moq, both are useful |
+| `CommitCountTests` | Unit (spy unit of work) | Kept | Proves one commit per use case with a hand-written spy; the Moq tests use the same idea with `Verify(Times.Once)` for parcels |
+| `ApiSecurityTests` | Unit (JWT and role rules) | Kept | Covers the JWT role rules from the risk map |
+| `AuditStoreTests`, `CacheAndCourierTests`, `PasswordHasherTests` | Unit | Kept | Fast and deterministic |
+| `MeasurementTests` | Unit (caching and measurements) | Kept | Still valid; clock input made fixed (see below) |
+| `ParcelServiceTests` | Unit (fake repository) | Kept, complemented | State-based tests stay. `ParcelServiceMockTests` was added with Moq (Strict repository mock, `Verify`) for interactions such as "never saves on failure" |
+| `AuthenticationTests`, `IntegrationEndpointTests`, `ApiKeyNotConfiguredTests`, `CorsTests`, `RateLimitTests`, `PipelineTests`, `MaintenanceModeTests`, `IdentityVerificationTests`, `AuditAndFilterTests`, `ConcurrencyHttpTests` | Integration (WebApplicationFactory, SQL Server test database) | Kept | They already test the real pipeline and real database; slow by design, so none were added at this level for the Web project |
+| `SqlPersistenceTests` | Integration (real SQL Server) | Kept | The repository and query tests; this is the "not a mocked DbContext" evidence |
+| `ApexApiClientTests` | Unit (fake HttpMessageHandler) | Kept, complemented | Already covered 200 with JSON, 404, 500, timeout and ProblemDetails. `ApexApiClientCancellationTests` adds caller cancellation |
+| `ResilienceTests`, `BatchUploaderTests`, `AuthTests` | Unit (real Polly pipeline, fake handler) | Kept | Retry, circuit breaker and token tests with no real network |
+| `OutboxServiceTests` | Unit and integration (real embedded store) | Kept, complemented | `OutboxServiceMockTests` was added with Moq to prove the outbox decisions without a store |
+| `BatchSyncServiceTests`, `ScanRepositoryTests`, `ShipmentScanTests`, `ChangeListenerTests`, `OfflineCarryOverTests` | Integration (real Couchbase Lite) | Kept | They exercise the real offline store, which a mock could not prove |
+
+Determinism clean-up (modified): the real clock was replaced by the fixed date 2026-11-10 09:00 UTC in `ApexApiClientTests.cs`, `ResilienceTests.cs`, `InfrastructureTests.cs`, `MeasurementTests.cs`. The tests did not change their meaning; they just no longer read the system time.
+
+Not changed on purpose: `ApiSecurityTests`, `AuthTests` and `SqlPersistenceTests` still read the real clock in a few places, because the code under test (the JWT validator, the token expiry check, "today" in the report queries) reads the system time itself and has no clock to inject. The tests do not depend on the date of the run in a way that can fail, but this is a known limit. Fixing it would mean injecting `TimeProvider` into those components, which is listed as future work.
 
 ## 8. BDD: level and scope
 
@@ -129,4 +145,5 @@ The result of the last full run is saved in `docs/week5/test-run.log`.
 * **Where the brief and the code disagreed.** The brief's example was a surcharge for parcels over 30 kg, but the standard parcel limit is already 30 kg, so no valid parcel could ever reach it. I did not hide this: I chose 20 kg and wrote the reason in `TDD-LOG.md`.
 * **The best find of the week.** A simple boundary test of the scan id failed with a `FormatException`. The error message contained `{guid}`, and DataAnnotations formats the message, so a wrong scan id would have returned HTTP 500 instead of 400. None of my 260 older tests had found it. It shows that boundary tests on inputs are worth more than many happy-path tests.
 * **What I learned about Copilot.** It is fast and often right: it caught a wrong method name in my own prompt, and it reused my existing BDD steps. But one of its edits left duplicated lines in a test, and the green message in the chat window was from before that edit. I only trust a test after I run it myself on the final file, and after I break the code on purpose and see it fail. Even that needed care: my first "break" (`if (false)`) did not build, because this project treats unreachable-code warnings as errors.
+* **Which test type gave the most confidence per minute.** Boundary unit tests (`[Theory]`): writing the scan id test took a few minutes and it found a real bug that 260 older tests had missed. The API integration test (real JWT, real SQL Server) gave the most confidence per test for "the parts work together", but each run costs seconds. BDD gave the least confidence per minute (the most set-up work, and most of its checks repeat what lower levels already prove); its value is that a non-programmer can read it.
 * **What I would do next.** Replace the remaining `DateTimeOffset.UtcNow` calls in the older tests with fixed dates, add a BDD outline for forbidden status moves (for example Delivered back to PickedUp must be refused), and run the whole suite on every push in a build pipeline.
