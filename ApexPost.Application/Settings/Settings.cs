@@ -16,6 +16,12 @@ public sealed class ShippingSettings
     public decimal ExpressMultiplier { get; set; } = 1.6m;
     public decimal RegisteredMultiplier { get; set; } = 1.3m;
 
+    /// <summary>A parcel heavier than this many kilograms pays the heavy parcel surcharge.</summary>
+    public decimal HeavyParcelThresholdKg { get; set; } = 20m;
+
+    /// <summary>Flat amount added after the service level multiplier (it is not multiplied).</summary>
+    public decimal HeavyParcelSurcharge { get; set; } = 15m;
+
     public WeightLimitRule CreateWeightLimitRule() => new(
         Weight.FromKilograms(MaxLetterKg),
         Weight.FromKilograms(MaxStandardParcelKg),
