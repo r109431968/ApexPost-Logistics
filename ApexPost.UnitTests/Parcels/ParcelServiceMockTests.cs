@@ -1,4 +1,4 @@
-using ApexPost.Application.Abstractions;
+﻿using ApexPost.Application.Abstractions;
 using ApexPost.Application.Exceptions;
 using ApexPost.Application.Parcels;
 using ApexPost.Application.Services;
@@ -179,6 +179,35 @@ public class ParcelServiceMockTests
     }
 
     [Fact]
+    public async Task UploadScans_DeliveredScanReachesFinalStatus_RejectsSubsequentScan()
+    {
+        // Arrange
+        ParcelExists(ParcelStatus.OutForDelivery);
+        AlreadyStored();
+        StagingWorks();
+        var scans = new[]
+        {
+            Scan("delivered", ParcelScanType.Delivered, minutesAgo: 60),
+            Scan("after-delivery", ParcelScanType.Failed, minutesAgo: 30)
+        };
+
+        // Act
+        var result = await _service.UploadScansAsync(Tracking, Courier, scans, default);
+
+        // Assert
+        Assert.Equal(1, result.Accepted);
+        var rejection = Assert.Single(result.Rejected);
+        Assert.Equal("scan::after-delivery", rejection.ScanId);
+        Assert.Contains("Delivered", rejection.Reason);
+
+        _parcels.Verify(repository => repository.AddScansAsync(
+            Tracking, Courier, It.Is<IReadOnlyList<ScanInput>>(stored => stored.Count == 1 && stored[0].ScanId == "scan::delivered"), Now, It.IsAny<CancellationToken>()), Times.Once);
+        _parcels.Verify(repository => repository.SetStatusAsync(
+            Tracking, ParcelStatus.OutForDelivery, ParcelStatus.Delivered, Now, It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(work => work.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task UploadScans_UnknownShipment_ThrowsNotFoundAndLooksNoFurther()
     {
         // Arrange
@@ -192,7 +221,7 @@ public class ParcelServiceMockTests
         _unitOfWork.Verify(work => work.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    // ---- CreateAsync and ChangeStatusAsync ---------------------------------------------------------------------
+    // ---- CreateAsync, ChangeStatusAsync and DeleteAsync ----------------------------------------------------------------------
 
     [Fact]
     public async Task Create_DuplicateTrackingNumber_ThrowsConflictAndStagesNothing()
@@ -236,6 +265,39 @@ public class ParcelServiceMockTests
 
         _parcels.Verify(repository => repository.SetStatusAsync(
             It.IsAny<string>(), It.IsAny<ParcelStatus>(), It.IsAny<ParcelStatus>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(work => work.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Delete_CreatedParcel_DeletesAndCommitsOnce()
+    {
+        // Arrange
+        ParcelExists(ParcelStatus.Created);
+        _parcels.Setup(repository => repository.DeleteAsync(Tracking, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        // Act
+        await _service.DeleteAsync(Tracking, default);
+
+        // Assert
+        _parcels.Verify(repository => repository.DeleteAsync(Tracking, It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(work => work.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Delete_NonCreatedParcel_ThrowsConflictAndDoesNotPersist()
+    {
+        // Arrange
+        ParcelExists(ParcelStatus.PickedUp);
+
+        // Act
+        var exception = await Assert.ThrowsAsync<ParcelConflictException>(
+            () => _service.DeleteAsync(Tracking, default));
+
+        // Assert
+        Assert.Contains("Created", exception.Message);
+        _parcels.Verify(repository => repository.DeleteAsync(
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(work => work.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

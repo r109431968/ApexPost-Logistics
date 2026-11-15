@@ -1,8 +1,8 @@
-# prove-tests-can-fail.ps1  -  breaks production code on purpose and checks that the unit tests FAIL, then restores it.
+﻿# prove-tests-can-fail.ps1  -  breaks production code on purpose and checks that the unit tests FAIL, then restores it.
 # Run from the repository root:  powershell -ExecutionPolicy Bypass -File .\scripts\prove-tests-can-fail.ps1
 # Needs a clean working copy for the three files below (it restores them with git checkout).
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 Set-Location (Resolve-Path (Join-Path $PSScriptRoot '..'))
 
 $mutations = @(
@@ -54,3 +54,4 @@ $log | Set-Content -Path 'docs\week5\mutation-proof.log' -Encoding UTF8
 Write-Host ""; git status --short
 if ($allGood) { Write-Host "All mutations were caught. Log: docs\week5\mutation-proof.log" -ForegroundColor Green }
 else { Write-Host "At least one mutation was NOT caught. Log: docs\week5\mutation-proof.log" -ForegroundColor Red }
+
