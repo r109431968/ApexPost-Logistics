@@ -1,4 +1,4 @@
-﻿# ApexPost testing strategy (Week 5)
+# ApexPost testing strategy (Week 5)
 
 This document is written before the new tests. It says what we test, at which level, with which tools, and why.
 It was finished at the end of the week (sections 4 to 11).
@@ -124,9 +124,9 @@ The result of the last full run is saved in `docs/week5/test-run.log`.
 
 ## 12. Reflection
 
-* **What the pyramid gave us:** most checks run in milliseconds, so I can run them after every change. When a unit test fails, it names the exact rule. When an integration or BDD scenario fails, I know the wiring broke, not the rule.
-* **What mocks hid from us:** the Moq tests of `ParcelService` passed even though a mock never checks the real SQL. Only the SQL Server tests can show a wrong query or a missing unique index. A green mock test is not a green system.
-* **Where the brief and the code disagreed:** the brief gave "surcharge over 30 kg" as the example, but the standard parcel limit is already 30 kg, so no valid parcel could ever reach it. I used 20 kg and wrote the finding in `TDD-LOG.md`.
-* **What I would do next:** replace the remaining `UtcNow` calls in old tests with fixed dates, and run the whole suite in a build pipeline on every push.
-* **A bug the tests found:** the boundary test for the scan id failed with a `FormatException`. The error message `"... scan::{guid}."` contains braces, and DataAnnotations formats the message with `string.Format`, so a wrong scan id would have caused an HTTP 500 instead of a clean 400. Fixed by writing `{{guid}}`. This is a real defect that no existing test had caught.
-
+* **What the pyramid gave me.** Most of my checks are unit tests that run in about three seconds, so I could run them after every small change. When one fails, it names the exact rule that broke. The slower tests (SQL Server, the API pipeline, BDD) only had to prove that the parts work together, so I kept them few.
+* **What mocks hid from me.** My Moq tests of `ParcelService` stay green whatever the SQL does, because the repository is a mock. They prove the service rule (duplicates, final status, one commit) but not the query, the unique index or the EF mapping. Those are proven only against a real SQL Server test database. A green mock test is not a green system, and I never mocked the `DbContext` for that reason.
+* **Where the brief and the code disagreed.** The brief's example was a surcharge for parcels over 30 kg, but the standard parcel limit is already 30 kg, so no valid parcel could ever reach it. I did not hide this: I chose 20 kg and wrote the reason in `TDD-LOG.md`.
+* **The best find of the week.** A simple boundary test of the scan id failed with a `FormatException`. The error message contained `{guid}`, and DataAnnotations formats the message, so a wrong scan id would have returned HTTP 500 instead of 400. None of my 260 older tests had found it. It shows that boundary tests on inputs are worth more than many happy-path tests.
+* **What I learned about Copilot.** It is fast and often right: it caught a wrong method name in my own prompt, and it reused my existing BDD steps. But one of its edits left duplicated lines in a test, and the green message in the chat window was from before that edit. I only trust a test after I run it myself on the final file, and after I break the code on purpose and see it fail. Even that needed care: my first "break" (`if (false)`) did not build, because this project treats unreachable-code warnings as errors.
+* **What I would do next.** Replace the remaining `DateTimeOffset.UtcNow` calls in the older tests with fixed dates, add a BDD outline for forbidden status moves (for example Delivered back to PickedUp must be refused), and run the whole suite on every push in a build pipeline.
