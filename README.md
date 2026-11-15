@@ -193,3 +193,25 @@ The MAUI project is not in `ApexPost.slnx` on purpose: it needs the MAUI workloa
 ## Week 4 screenshots (Parts B to D)
 
 Files in docs/week4: week4-swagger-v2.png, week4-swagger-v1-deprecated.png, week4-deprecation-sunset-header.png, week4-401.png, week4-403.png
+
+## Testing (Week 5)
+
+Strategy, risk map and test pyramid: [TESTING-STRATEGY.md](TESTING-STRATEGY.md). TDD history: [TDD-LOG.md](TDD-LOG.md). Copilot use: [COPILOT-LOG.md](COPILOT-LOG.md).
+
+|Project|Level|What it proves|
+|-|-|-|
+|`ApexPost.UnitTests`|Unit (xUnit, Moq)|Business rules, pricing (TDD), validation, services with mocked dependencies|
+|`ApexPost.Courier.Core.Tests`|Unit (fake `HttpMessageHandler`)|API client, retry, timeout, circuit breaker, cancellation|
+|`ApexPost.Courier.Offline.Tests`|Unit and integration|Outbox decisions (Moq) and the embedded Couchbase Lite store|
+|`ApexPost.IntegrationTests`|Integration (SQL Server)|Repositories, transactions, concurrency, the web pipeline|
+|`ApexPost.Api.IntegrationTests`|Integration (API end to end)|Real JWT, 401 / 200 / 403, duplicate scan batch, real database|
+|`ApexPost.Specs`|BDD (Reqnroll, Gherkin)|Shipment creation and scan sync as readable scenarios|
+
+Run everything (needs the .NET 10 SDK and SQL Server LocalDB; no secrets are needed because tests use their own fictional configuration):
+
+```powershell
+dotnet test ApexPost.slnx
+```
+
+Run one level: `dotnet test ApexPost.UnitTests`, `dotnet test ApexPost.Api.IntegrationTests`, `dotnet test ApexPost.Specs`.
+The output of the last full run is in [docs/week5/test-run.log](docs/week5/test-run.log). Proof that the tests can fail: `scripts/prove-tests-can-fail.ps1` and `docs/week5/mutation-proof.log`.
