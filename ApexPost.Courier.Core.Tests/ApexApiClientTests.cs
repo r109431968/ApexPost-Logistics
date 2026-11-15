@@ -6,7 +6,7 @@ namespace ApexPost.Courier.Core.Tests;
 public class ApexApiClientTests
 {
     private static readonly IReadOnlyList<ScanItemDto> Scans =
-        [new("scan::3f2504e0-4f89-41d3-9a0c-0305e82c3301", "Pickup", "Depot", DateTimeOffset.UtcNow, null, null)];
+        [new("scan::3f2504e0-4f89-41d3-9a0c-0305e82c3301", "Pickup", "Depot", new DateTimeOffset(2026, 11, 10, 9, 0, 0, TimeSpan.Zero), null, null)];
 
     [Fact]
     public async Task A_good_answer_becomes_a_value_and_the_request_has_the_right_shape()

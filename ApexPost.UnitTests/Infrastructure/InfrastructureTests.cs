@@ -39,7 +39,7 @@ public class CacheAndCourierTests
         var repository = new InMemoryRepository<Product, Sku>();
         await repository.AddAsync(
             new Product(new Sku("STA-0001"), "Pen", ProductCategory.Stationery, new Money(2m), TaxCategory.Standard), default);
-        var catalogue = new ProductCatalog(repository, new FixedClock(DateTimeOffset.UtcNow), new CatalogCacheSettings());
+        var catalogue = new ProductCatalog(repository, new FixedClock(new DateTimeOffset(2026, 11, 10, 9, 0, 0, TimeSpan.Zero)), new CatalogCacheSettings());
 
         for (var i = 0; i < 100; i++)
             Assert.NotNull(await catalogue.GetAsync(new Sku("STA-0001"), default));
@@ -52,7 +52,7 @@ public class CacheAndCourierTests
     public async Task Invalidate_forces_a_reload()
     {
         var repository = new InMemoryRepository<Product, Sku>();
-        var catalogue = new ProductCatalog(repository, new FixedClock(DateTimeOffset.UtcNow), new CatalogCacheSettings());
+        var catalogue = new ProductCatalog(repository, new FixedClock(new DateTimeOffset(2026, 11, 10, 9, 0, 0, TimeSpan.Zero)), new CatalogCacheSettings());
 
         await catalogue.ListAsync(default);
         catalogue.Invalidate();
@@ -67,7 +67,7 @@ public class CacheAndCourierTests
             TimeoutMilliseconds = timeoutMs,
             SimulatedLatencyMilliseconds = latencyMs,
             MaxConcurrentLookups = slots
-        }, new FixedClock(DateTimeOffset.UtcNow), NullLogger<SimulatedCourierTrackingService>.Instance);
+        }, new FixedClock(new DateTimeOffset(2026, 11, 10, 9, 0, 0, TimeSpan.Zero)), NullLogger<SimulatedCourierTrackingService>.Instance);
 
     [Fact]
     public async Task A_normal_lookup_returns_a_status()

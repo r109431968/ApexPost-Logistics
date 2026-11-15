@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Text;
 using ApexPost.Application.Abstractions;
 using ApexPost.Application.Reports;
@@ -82,7 +82,7 @@ public class MeasurementTests
         }
 
         var slow = new SlowRepository<Product, Sku>(products, ReadDelayMilliseconds);
-        var catalogue = new ProductCatalog(slow, new FixedClock(DateTimeOffset.UtcNow), new CatalogCacheSettings());
+        var catalogue = new ProductCatalog(slow, new FixedClock(new DateTimeOffset(2026, 11, 10, 9, 0, 0, TimeSpan.Zero)), new CatalogCacheSettings());
         var sku = new Sku("STA-0001");
 
         var watch = Stopwatch.StartNew();
@@ -152,7 +152,7 @@ public class MeasurementTests
                 SimulatedLatencyMilliseconds = 150,
                 MaxConcurrentLookups = slots
             },
-            new FixedClock(DateTimeOffset.UtcNow),
+            new FixedClock(new DateTimeOffset(2026, 11, 10, 9, 0, 0, TimeSpan.Zero)),
             NullLogger<SimulatedCourierTrackingService>.Instance);
 
         var watch = Stopwatch.StartNew();

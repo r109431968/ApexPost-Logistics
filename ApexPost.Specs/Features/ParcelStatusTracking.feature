@@ -1,3 +1,4 @@
+# Copilot-assisted (GitHub Copilot Chat, 2026-11-15): drafted by Copilot, reviewed and indentation fixed by hand. See COPILOT-LOG.md.
 Feature: Parcel status tracking
   As a customer waiting for a delivery
   I want to follow a parcel as it progresses
