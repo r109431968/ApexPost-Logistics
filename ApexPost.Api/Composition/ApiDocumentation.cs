@@ -27,6 +27,12 @@ public static class ApiDocumentation
 
                 // Each response reports its own version's state: api-supported-versions for v2, api-deprecated-versions for the deprecated v1.
                 options.ReportApiVersions = true;
+
+                options.Policies.Sunset(1.0)
+                    .Effective(new DateTimeOffset(2027, 6, 30, 0, 0, 0, TimeSpan.Zero))
+                    .Link("https://localhost:7241/swagger")
+                        .Title("ApexPost API version 2")
+                        .Type("text/html");
             })
             .AddMvc()
             .AddApiExplorer(options =>

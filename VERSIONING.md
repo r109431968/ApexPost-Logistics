@@ -36,6 +36,7 @@ changing a status code is breaking and needs a new major version.
 2. **Announcement (month 0):** partners and the courier app team are told the date below. VERSIONING.md and the release notes name v2 as the replacement.
 3. **Migration window (months 0 to 6):** both versions run. New features go to v2 only. v1 gets security and data fixes only.
 4. **Warning (month 5):** v1 responses add a `Sunset` header with the removal date. Callers still on v1 in the logs are contacted one by one.
+   The Sunset header is already enabled in the code (Asp.Versioning Sunset policy, removal date 30 Jun 2027), see docs/week4/week4-deprecation-sunset-header.png.
 5. **Sunset (month 6):** v1 controllers are removed. A call to `/api/v1/...` then gets 404 (unknown route). `contracts/v1.json` stays in the repository as history.
 6. **Rollback:** if an important caller is not ready, the date moves once, by at most 3 months, and the new date is announced the same day.
 

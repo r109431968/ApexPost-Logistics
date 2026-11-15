@@ -1,4 +1,4 @@
-# ApexPost Counter Platform (Week 3: SQL Server)
+# ApexPost Counter Platform (Week 4: Offline courier app and REST API)
 
 ASP.NET Core MVC application (.NET 10, C# 14) for ApexPost branches: retail sales, parcel and letter shipping,
 money orders and identity verification from one counter. Data lives in **SQL Server** (Entity Framework Core 10) behind the same
@@ -189,3 +189,7 @@ dotnet run --project ApexPost.Courier -f net10.0-windows10.0.19041.0
 ```
 
 The MAUI project is not in `ApexPost.slnx` on purpose: it needs the MAUI workload and the Android SDK. Build it with `dotnet build ApexPost.Courier -f net10.0-windows10.0.19041.0`. On the Android emulator the API is reached at `https://10.0.2.2:7241` (the Debug-only certificate exception is explained in SECURITY.md).
+
+## Week 4 screenshots (Parts B to D)
+
+Files in docs/week4: week4-swagger-v2.png, week4-swagger-v1-deprecated.png, week4-deprecation-sunset-header.png, week4-401.png, week4-403.png
