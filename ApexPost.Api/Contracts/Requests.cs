@@ -106,7 +106,7 @@ public sealed class ScanItemRequest : IValidatableObject
 {
     /// <summary>The id the scan got on the phone, <c>scan::{guid}</c>. Sending the same id again never creates a duplicate.</summary>
     /// <example>scan::3f2504e0-4f89-41d3-9a0c-0305e82c3301</example>
-    [Required, RegularExpression(Patterns.ScanId, ErrorMessage = "The scan id must look like scan::{guid}.")]
+    [Required, RegularExpression(Patterns.ScanId, ErrorMessage = "The scan id must look like scan::{{guid}}.")]
     public string ScanId { get; init; } = "";
 
     /// <summary>Pickup, InTransit, Delivered or Failed.</summary>
