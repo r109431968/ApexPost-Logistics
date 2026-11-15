@@ -10,4 +10,8 @@
     <PackageReference Include="Couchbase.Lite" Version="4.1.2" />
   </ItemGroup>
 
+<ItemGroup>
+	<ProjectReference Include="..\ApexPost.Courier.Domain\ApexPost.Courier.Domain.csproj" />
+</ItemGroup>
+
 </Project>
