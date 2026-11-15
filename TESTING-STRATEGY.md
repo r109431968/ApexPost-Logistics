@@ -1,4 +1,4 @@
-# ApexPost testing strategy (Week 5)
+﻿# ApexPost testing strategy (Week 5)
 
 This document is written before the new tests. It says what we test, at which level, with which tools, and why.
 It was finished at the end of the week (sections 4 to 11).
@@ -91,7 +91,7 @@ Known weakness, kept honest: a few older tests still call `DateTimeOffset.UtcNow
 ## 8. BDD: level and scope
 
 * Level: **API level**, through the in-memory server, real authentication and a real test database. Not UI level: the UI is slower and breaks on every layout change, and the business rules do not live in the UI.
-* Features: `ShipmentCreation.feature` (valid shipment, duplicate tracking number, Scenario Outline with four invalid inputs) and `ScanSync.feature` (new scan, same scan twice, wrong courier, Delivered without a signature).
+* Features: `ShipmentCreation.feature` (valid shipment, duplicate tracking number, Scenario Outline with four invalid inputs) `ScanSync.feature` (new scan, same scan twice, wrong courier, Delivered without a signature) and `ParcelStatusTracking.feature` (a Scenario Outline of the delivery journey, written with Copilot, see COPILOT-LOG.md).
 * Mechanics: a `Background` signs in; `ApiContext` is shared between steps and hooks by context injection; `BeforeScenario` starts a new server and database, `AfterScenario` drops them.
 * BDD is for behaviours a business person can read. Small edge cases (every status pair, every weight boundary) stay in unit tests.
 
@@ -122,10 +122,11 @@ dotnet test ApexPost.Specs                                 # BDD scenarios (need
 
 The result of the last full run is saved in `docs/week5/test-run.log`.
 
-## 12. Reflection (draft: read it, then change it into your own words)
+## 12. Reflection
 
 * **What the pyramid gave us:** most checks run in milliseconds, so I can run them after every change. When a unit test fails, it names the exact rule. When an integration or BDD scenario fails, I know the wiring broke, not the rule.
 * **What mocks hid from us:** the Moq tests of `ParcelService` passed even though a mock never checks the real SQL. Only the SQL Server tests can show a wrong query or a missing unique index. A green mock test is not a green system.
 * **Where the brief and the code disagreed:** the brief gave "surcharge over 30 kg" as the example, but the standard parcel limit is already 30 kg, so no valid parcel could ever reach it. I used 20 kg and wrote the finding in `TDD-LOG.md`.
 * **What I would do next:** replace the remaining `UtcNow` calls in old tests with fixed dates, and run the whole suite in a build pipeline on every push.
 * **A bug the tests found:** the boundary test for the scan id failed with a `FormatException`. The error message `"... scan::{guid}."` contains braces, and DataAnnotations formats the message with `string.Format`, so a wrong scan id would have caused an HTTP 500 instead of a clean 400. Fixed by writing `{{guid}}`. This is a real defect that no existing test had caught.
+
