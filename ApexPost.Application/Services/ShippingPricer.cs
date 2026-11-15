@@ -31,6 +31,11 @@ public sealed class ShippingPricer(ShippingSettings settings) : IShippingPricer
         };
 
         var raw = (zone.BaseRate.Amount + zone.PerKgRate.Amount * chargeableKg) * multiplier;
+
+        // GREEN: the simplest code that makes the new tests pass (numbers written in place; REFACTOR moves them to settings).
+        if (type == ShipmentType.Parcel && weight.Kilograms > 20m)
+            raw += 15m;
+
         return new Money(raw, zone.BaseRate.Currency);
     }
 }
